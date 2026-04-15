@@ -89,5 +89,14 @@
     <ClInclude Include="include\MutexQueue.hpp">
       <Filter>헤더 파일\include</Filter>
     </ClInclude>
+    <ClInclude Include="include\LockFreeQueue_new.hpp">
+      <Filter>헤더 파일\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LockFreeQueue_new2.hpp">
+      <Filter>헤더 파일\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LockFreeQueue_new3.hpp">
+      <Filter>헤더 파일\include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

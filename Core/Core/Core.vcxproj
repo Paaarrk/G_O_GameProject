@@ -29,6 +29,9 @@
     <ClInclude Include="include\Job.h" />
     <ClInclude Include="include\LockFreeFreeListV2.hpp" />
     <ClInclude Include="include\LockFreeQueue.hpp" />
+    <ClInclude Include="include\LockFreeQueue_new.hpp" />
+    <ClInclude Include="include\LockFreeQueue_new2.hpp" />
+    <ClInclude Include="include\LockFreeQueue_new3.hpp" />
     <ClInclude Include="include\LockFreeStack.hpp" />
     <ClInclude Include="include\logclassV1.h" />
     <ClInclude Include="include\MonitorV1.h" />
