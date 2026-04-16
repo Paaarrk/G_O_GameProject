@@ -1,4 +1,4 @@
-# Netlibrary Refactoring And Goddamburg Online Project
+# Netlibrary Refactoring And Simple MMO Online Project
 1) 기존 라이브러리 리팩토링
 
 2) 게임 프로젝트
