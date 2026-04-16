@@ -7,6 +7,14 @@ Core::CCrashDump g_dump;
 // #define NEW2
 // #define NEW1
 // #define NEW3
+// #define SELECTED
+#define MPSC
+#ifdef MPSC
+#include "TestMPSC.h"
+#endif
+#ifdef SELECTED
+#include "LockFreeQueue_selected.hpp"
+#endif
 #ifdef NEW1
 #include "LockFreeQueue_new.hpp"
 #else
@@ -16,7 +24,9 @@ Core::CCrashDump g_dump;
 		#ifdef NEW3
 		#include "LockFreeQueue_new3.hpp"
 		#else
-		#include "LockFreeQueue.hpp"
+			#ifndef MPSC
+			#include "LockFreeQueue.hpp"
+			#endif
 		#endif	
 	#endif
 #endif
@@ -62,12 +72,25 @@ void			CorrectTest2();
 unsigned int	CorrectTest_EnqueueFunc2(void* param);
 unsigned int	CorrectTest_DequeueFunc2(void* param);
 
+//---------------------------------------------------
+// MPMC Test
+//---------------------------------------------------
+void			CorrectTestMPMC();
+//---------------------------------------------------
+// MPSC Test
+//---------------------------------------------------
+void			CorrectTestMPSC();
+
+void			CorrectTestBoth();
 
 int main(void)
 {
 	// CorrectTest1();
 	// CorrectTest2();
-	CPfQueue queue;
+	// CPfQueue queue;
+	// CTest_MPSC mpsc;
+	// CorrectTestMPMC();
+	CorrectTestBoth();
 	int key = _getch();
 	return 0;
 }
@@ -378,6 +401,109 @@ unsigned int CorrectTest_DequeueFunc2(void* param)
 
 	printf_s("Dequeue Thread End : %u   \n", tid);
 	return 0;
+}
+
+#include <timeapi.h>
+#pragma comment(lib, "winmm")
+void CorrectTestMPSC()
+{
+	timeBeginPeriod(1);
+	int key;
+	while (1)
+	{
+		CTest_MPSC mpsc;
+		CTest_MPSC::STInfo info;
+
+		while (1)
+		{
+			mpsc.GetInfo(info);
+			tm tm;
+			time_t mytime = time(NULL);
+			localtime_s(&tm, &mytime);
+			printf_s("[%2d:%2d:%2d] -------------- \n", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			printf_s("QueueSize   : %d \n", info.QueueSize);
+			printf_s("CreateChunk : %d \n", info.ACreateChunk);
+			printf_s("LeftChunk   : %d \n", info.ALeftChunk);
+
+			if (_kbhit())
+			{
+				key = _getch();
+
+				if (key == 'Q' || key == 'q')
+					break;
+			}
+
+			if (mpsc.TryFin() == true)
+				break;
+			Sleep(1000);
+		}
+
+		if (_kbhit())
+		{
+			key = _getch();
+
+			if (key == 'Q' || key == 'q')
+				break;
+		}
+	}
+
+}
+
+void CorrectTestMPMC()
+{
+	timeBeginPeriod(1);
+	int key;
+	while (1)
+	{
+		CTest_MPMC mpmc;
+		CTest_MPMC::STInfo info;
+
+		while (1)
+		{
+			mpmc.GetInfo(info);
+			tm tm;
+			time_t mytime = time(NULL);
+			localtime_s(&tm, &mytime);
+			printf_s("[%2d:%2d:%2d] -------------- \n", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			printf_s("QueueSize   : %d \n", info.QueueSize);
+			printf_s("CreateChunk : %d \n", info.ACreateChunk);
+			printf_s("LeftChunk   : %d \n", info.ALeftChunk);
+
+			if (_kbhit())
+			{
+				key = _getch();
+
+				if (key == 'Q' || key == 'q')
+					break;
+			}
+
+			if (mpmc.TryFin() == true)
+				break;
+			Sleep(1000);
+		}
+
+		if (_kbhit())
+		{
+			key = _getch();
+
+			if (key == 'Q' || key == 'q')
+				break;
+		}
+	}
+
+}
+
+void CorrectTestBoth()
+{
+	int i = 0;
+	while (1)
+	{
+		i++;
+		if (i % 2 == 0)
+			CorrectTestMPSC();
+		else
+			CorrectTestMPMC();
+	}
 }
 
 

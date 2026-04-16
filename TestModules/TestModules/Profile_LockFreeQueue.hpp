@@ -1,5 +1,8 @@
 #pragma once
 
+#ifdef SELECTED
+#include "LockFreeQueue_selected.hpp"
+#endif
 #ifdef NEW1
 #include "LockFreeQueue_new.hpp"
 #else
@@ -9,7 +12,11 @@
 #ifdef NEW3
 #include "LockFreeQueue_new3.hpp"
 #else
+#ifndef MPSC
 #include "LockFreeQueue.hpp"
+#else
+#include "LockFreeQueue_selected.hpp"
+#endif
 #endif	
 #endif
 #endif
