@@ -1,0 +1,40 @@
+< 새로 만든 거 >
+Per Threads Enqueue --------------------------
+[Thread  0] | count:  100000000 | time:   30810.91ms | avg:       0.31us |
+[Thread  1] | count:  100000000 | time:   13040.15ms | avg:       0.13us |
+[Thread  2] | count:  100000000 | time:   28260.94ms | avg:       0.28us |
+[Thread  3] | count:  100000000 | time:   43249.65ms | avg:       0.43us |
+
+[    Total] | count:  400000000 | time:  115361.64ms | avg:       0.29us |
+
+
+Per Threads Dequeue --------------------------
+[Thread  0] | count:  198593433 | time:   44615.30ms | avg:       0.22us |
+[Thread  1] | count:  173097643 | time:   44615.16ms | avg:       0.26us |
+[Thread  2] | count:   14560489 | time:   44458.91ms | avg:       3.05us |
+[Thread  3] | count:   13748435 | time:   44400.64ms | avg:       3.23us |
+
+[    Total] | count:  400000000 | time:  178090.01ms | avg:       0.45us |
+
+LeftQueueSize: 0
+
+
+< 기존 >
+Per Threads Enqueue --------------------------
+[Thread  0] | count:  100000000 | time:   52798.47ms | avg:       0.53us |
+[Thread  1] | count:  100000000 | time:   26230.77ms | avg:       0.26us |
+[Thread  2] | count:  100000000 | time:   39343.09ms | avg:       0.39us |
+[Thread  3] | count:  100000000 | time:   43818.69ms | avg:       0.44us |
+
+[    Total] | count:  400000000 | time:  162191.02ms | avg:       0.41us |
+
+
+Per Threads Dequeue --------------------------
+[Thread  0] | count:   43581571 | time:   53379.82ms | avg:       1.22us |
+[Thread  1] | count:   28326070 | time:   53265.12ms | avg:       1.88us |
+[Thread  2] | count:  277376541 | time:   53248.80ms | avg:       0.19us |
+[Thread  3] | count:   50715818 | time:   52833.04ms | avg:       1.04us |
+
+[    Total] | count:  400000000 | time:  212726.79ms | avg:       0.53us |
+
+LeftQueueSize: 0

@@ -7,8 +7,8 @@ Core::CCrashDump g_dump;
 // #define NEW2
 // #define NEW1
 // #define NEW3
-// #define SELECTED
-#define MPSC
+ #define SELECTED
+// #define MPSC
 #ifdef MPSC
 #include "TestMPSC.h"
 #endif
@@ -72,6 +72,7 @@ void			CorrectTest2();
 unsigned int	CorrectTest_EnqueueFunc2(void* param);
 unsigned int	CorrectTest_DequeueFunc2(void* param);
 
+#ifdef MPSC
 //---------------------------------------------------
 // MPMC Test
 //---------------------------------------------------
@@ -82,15 +83,16 @@ void			CorrectTestMPMC();
 void			CorrectTestMPSC();
 
 void			CorrectTestBoth();
+#endif
 
 int main(void)
 {
 	// CorrectTest1();
 	// CorrectTest2();
-	// CPfQueue queue;
+	CPfQueue queue;
 	// CTest_MPSC mpsc;
 	// CorrectTestMPMC();
-	CorrectTestBoth();
+	// CorrectTestBoth();
 	int key = _getch();
 	return 0;
 }
@@ -405,6 +407,8 @@ unsigned int CorrectTest_DequeueFunc2(void* param)
 
 #include <timeapi.h>
 #pragma comment(lib, "winmm")
+
+#ifdef MPSC
 void CorrectTestMPSC()
 {
 	timeBeginPeriod(1);
@@ -505,5 +509,6 @@ void CorrectTestBoth()
 			CorrectTestMPMC();
 	}
 }
+#endif
 
 
