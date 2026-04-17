@@ -5,16 +5,23 @@
 
 # Refactoring
 
-| 기간 | 내용 |
-|-----|-----|
-| 4. 14 ~  | 락프리 큐 가독성 강화 및 최적화 [[상세 내용 확인](#lock-free-details)] |
+| 기간 | 내용 | 상세 링크 |
+|-----|-----|----|
+| 4. 14 ~  | 락프리 큐 개선 | [[개선 사항](#lock-free-details)] |
 
 # Game Project
 
 
 # Details
 
-<div id="lock-free-details"></div><details>
+<div id="lock-free-details"></div>
+
+### 1. 락 프리큐 개선
+#### < 목표 >
+- 불필요 분기 제거로 CPU 분기 예측 실패 가능성 줄이기
+- 불필요 #LOCK prefix제거로 false sharing 가능성 줄이기
+- 가독성 강화
+<details>
 <summary> 락프리 큐 가독성 강화 및 최적화  </summary>
 
 ### 1. MPMC 락프리 큐 4가지 방식의 코드 논리 비교 
@@ -43,7 +50,7 @@
 |--|--|
 | Builds | Release (O1) |
 | OS | Windows |
-| CPU | i7-12700H (3.0GHz / 14Core 20Thread) |
+| CPU | i7-12700H (3.5GHz / 14Core 20Thread) |
 
 #### < 테스트 방법 >
 - 4개의 생산자, 4개의 소비자
@@ -284,17 +291,102 @@ LeftQueueSize: 0
 
 </details>
 <div id="lock-free-details"></div><details>
-<summary> MPMC / MPMC 테스트 비교  </summary>
+<summary> 교체 전 후 테스트 비교  </summary>
 
-#### < MPMC >
+### 1. 테스트 환경
+| 테스트 환경 | 내용 |
+|--|--|
+| Builds | Release (O1) |
+| OS | Windows |
+| CPU | i7-12700H (3.5GHz / 14Core 20Thread) |
+
+### 2. 테스트 (상황 테스트, MPMC) 
+#### 1) 방법
+1. Enqueue 4개 스레드 / Dequeue 4개 스레드
+2. 거의 동시에 시작 (flag사용, 생성된 스레드는 mm_pause로 대기)
+3. 인큐는 4억회 인큐가 끝나면 release
+4. 디큐는 진행 하던 중 인큐 스레드 4개가 완료됨을 인지하면 루프를 나와 큐가 빌 때 까지 디큐함.
+5. 둘 다 head, tail, size, (pMyNull, maxsize) 에 align적용
+
+
+#### 2) 결과
+| 항목 | New | Old |
+|--|--|--|
+| Enqueue Avg (μs) | 0.29 (30% ▼) | 0.41 |
+| Dequeue Avg (μs) | 0.45 (15% ▼) | 0.53 |
+| Total Dequeue Time Distribution (ms) | 44400 ~ 44615 | 52833 ~ 53379 |
+
+#### 3) 결과 해석 및 차이 
+1. Dequeue로직의 tail이동 횟수 감소로 enqueue 경합 감소 및 속도 개선
+</br> - 아랫쪽에서 한번 더 수행하던 로직을 없애 Dequeue도 빠르게, Enqueue도 빠르게
+</br> - 기존에는 좀 더 도와주면 Enqueue가 빠르지 않을까 해서 넣었던 로직이였음
+
+2. Dequeue로직의 Null 판단 최적화로 분기 1회 줄임
+</br> - 기존은 _pMyNull 확인 이후 한번 더 전체적인 Null인지 확인 (상위 비트 FFFF8인지)
+</br> - 현재는 초기 1회 상위 비트 FFFF8확인으로 끝냄
+
+3. Dequeue로직의 더미노드만 있는지 확인하는 방법을 head가 tail을 추월하는지 확인하는 로직으로 변경 (분기 1회 감소)
+4. 가독성 향상을 위해 비트 연산부를 매크로 함수로 치환
+#### 4) 결론
+1. 분기 최적화 를 통해 분기예측 실패가능성을 줄임
+2. 불필요한 Interlocked 연산을 줄여 falsesharing 가능성을 줄임
+
+### 3. 서버에 적용 테스트
+// todo
+
 
 #### < 테스트 결과 txt >
 
 <details>
 <summary>  </summary>
 
-</details>
+```text
+< 두개 모두 alignas(64) 적용 된 상태 >
 
+< 새로 만든 거 >
+Per Threads Enqueue --------------------------
+[Thread  0] | count:  100000000 | time:   30810.91ms | avg:       0.31us |
+[Thread  1] | count:  100000000 | time:   13040.15ms | avg:       0.13us |
+[Thread  2] | count:  100000000 | time:   28260.94ms | avg:       0.28us |
+[Thread  3] | count:  100000000 | time:   43249.65ms | avg:       0.43us |
+
+[    Total] | count:  400000000 | time:  115361.64ms | avg:       0.29us |
+
+
+Per Threads Dequeue --------------------------
+[Thread  0] | count:  198593433 | time:   44615.30ms | avg:       0.22us |
+[Thread  1] | count:  173097643 | time:   44615.16ms | avg:       0.26us |
+[Thread  2] | count:   14560489 | time:   44458.91ms | avg:       3.05us |
+[Thread  3] | count:   13748435 | time:   44400.64ms | avg:       3.23us |
+
+[    Total] | count:  400000000 | time:  178090.01ms | avg:       0.45us |
+
+LeftQueueSize: 0
+
+
+< 기존 >
+Per Threads Enqueue --------------------------
+[Thread  0] | count:  100000000 | time:   52798.47ms | avg:       0.53us |
+[Thread  1] | count:  100000000 | time:   26230.77ms | avg:       0.26us |
+[Thread  2] | count:  100000000 | time:   39343.09ms | avg:       0.39us |
+[Thread  3] | count:  100000000 | time:   43818.69ms | avg:       0.44us |
+
+[    Total] | count:  400000000 | time:  162191.02ms | avg:       0.41us |
+
+
+Per Threads Dequeue --------------------------
+[Thread  0] | count:   43581571 | time:   53379.82ms | avg:       1.22us |
+[Thread  1] | count:   28326070 | time:   53265.12ms | avg:       1.88us |
+[Thread  2] | count:  277376541 | time:   53248.80ms | avg:       0.19us |
+[Thread  3] | count:   50715818 | time:   52833.04ms | avg:       1.04us |
+
+[    Total] | count:  400000000 | time:  212726.79ms | avg:       0.53us |
+
+LeftQueueSize: 0
+```
+
+</details>
+</details>
 
 </br>
 
