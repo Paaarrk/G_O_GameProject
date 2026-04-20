@@ -139,7 +139,7 @@ void Net::CZone::Release()
 	_contentsId = 0;
 	_zoneId = 0;
 	Core::IJob* pJob;
-	while (_jobQueue->isEmpty() == false)
+	while (_jobQueue->GetSize() > 0)
 	{
 		_jobQueue->Dequeue(pJob);
 		delete pJob;
