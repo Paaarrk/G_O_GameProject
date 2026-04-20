@@ -6,6 +6,7 @@
 #include "RingBufferV4.h"
 
 #include "ProfilerV2.hpp"
+#include "Profile_PQCS_Rate.hpp"
 
 
 #include <process.h>
@@ -757,6 +758,7 @@ bool Net::CZoneServer::SendPacket_Fast(uint64_t sessionId, Net::CPacket* pPacket
 	// . 보낼지 안보낼지는 모른다! (디스커넥트 상태에 따라)
 	//----------------------------------------------------
 	_monitorJob->IncreaseSendMessageCount();
+	Increase_Send_Total();
 
 	
 	long isSending = _InterlockedExchange(&pSession->isSending, 1);
@@ -777,6 +779,7 @@ bool Net::CZoneServer::SendPacket_Fast(uint64_t sessionId, Net::CPacket* pPacket
 		return true;
 	}
 
+	Increase_Pqcs_Total();
 	PostQueuedCompletionStatus(_hIOCP, SERVER_MSG_DELAYSEND, (ULONG_PTR)pSession, nullptr);
 	
 	//{
