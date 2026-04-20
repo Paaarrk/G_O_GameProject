@@ -324,7 +324,7 @@ bool Net::stZoneSession::RecvPost()
 	//-------------------------------------------------------
 bool stZoneSession::SendPost()
 {
-	PRO_BEGIN(L"NEW_GATHER_SENDPOST");
+	//PRO_BEGIN(L"NEW_GATHER_SENDPOST");
 	WSABUF wsabufs[SERVER_SEND_WSABUF_MAX];
 	int useSize;
 	Net::CPacket* pPacket;
@@ -397,7 +397,7 @@ bool stZoneSession::SendPost()
 		}
 	} while (i == 0);	// i > 0 이면 나와야
 
-	PRO_END(L"NEW_GATHER_SENDPOST");
+	//PRO_END(L"NEW_GATHER_SENDPOST");
 	// i > 0 (보낼 개수가 0보다 큼)
 	sendOl->sendbyte = useSize;
 	sendPacketsCnt = i;
