@@ -12,7 +12,7 @@ namespace Core
 	// 멀티스레드에 적합한 프로파일러 입니다.
 	//////////////////////////////////////////////////////////////////////////
 
-//#define _PROFILE
+#define _PROFILE
 
 #define PF_TAGS_CAPACITY	23
 
