@@ -14,6 +14,8 @@
 #include <timeapi.h>
 #pragma comment(lib, "winmm")
 
+#include "Profile_PQCS_Rate.hpp"
+
 static CEchoServer g_server;
 Core::CCrashDump g_crash;
 
@@ -236,6 +238,8 @@ int main()
 		curTime += 1000;
 	}
 
+
+	Print_Result();
 
 
 	return 0;

@@ -27,6 +27,7 @@
     <ClInclude Include="include\NetProtocol.h" />
     <ClInclude Include="include\NetServer.h" />
     <ClInclude Include="include\NetSession.h" />
+    <ClInclude Include="include\Profile_PQCS_Rate.hpp" />
     <ClInclude Include="include\TlsPacket.hpp" />
     <ClInclude Include="include\Zone.h" />
     <ClInclude Include="include\ZoneManager.h" />
