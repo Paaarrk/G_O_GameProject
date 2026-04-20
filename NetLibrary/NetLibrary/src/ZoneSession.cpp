@@ -324,6 +324,7 @@ bool Net::stZoneSession::RecvPost()
 	//-------------------------------------------------------
 bool stZoneSession::SendPost()
 {
+	PRO_BEGIN(L"OLD_GATHER_SENDPOST");
 	WSABUF wsabufs[SERVER_SEND_WSABUF_MAX];
 	//--------------------------------------------------
 	// 빈 큐인지 검사
@@ -472,6 +473,7 @@ TRY_SEND:
 		}
 	}
 
+	PRO_END(L"OLD_GATHER_SENDPOST");
 	sendOl->sendbyte = useSize;
 	sendPacketsCnt = i;
 	//---------------------------------------------------
@@ -486,12 +488,12 @@ TRY_SEND:
 	//---------------------------------------------------
 	uint64_t curSessionId = sessionId;	// WSASend보낸게 누구인지 미리 등록 (재사용 발생하면 다를 수 있음)
 
-	PRO_BEGIN(L"WSA_SEND");
+	//PRO_BEGIN(L"WSA_SEND");
 	int retSend = WSASend(sock, wsabufs, i, NULL, 0, (WSAOVERLAPPED*)sendOl, NULL);
 	if (retSend == SOCKET_ERROR)
 	{
 		DWORD err = GetLastError();
-		PRO_END(L"WSA_SEND");
+		//PRO_END(L"WSA_SEND");
 		if (err != WSA_IO_PENDING)
 		{
 			//-------------------------------------------
@@ -537,7 +539,7 @@ TRY_SEND:
 	else
 	{
 		// Send 송신 버퍼에다가
-		PRO_END(L"WSA_SEND");
+		//PRO_END(L"WSA_SEND");
 	}
 
 	//---------------------------------------------------

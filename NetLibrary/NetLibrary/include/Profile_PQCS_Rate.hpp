@@ -3,14 +3,14 @@
 #include <wchar.h>
 #include "logclassV1.h"
 
-#define PROFILE_PQCS_RATE
+// #define PROFILE_PQCS_RATE
 #ifdef PROFILE_PQCS_RATE
 #define Increase_Send_Total()	CProfilePQCSRate::Inst().CProfilePQCSRate::IncreaseSendTotal()
 #define Increase_Pqcs_Total()	CProfilePQCSRate::Inst().CProfilePQCSRate::IncreasePqcsTotal()
 #define Print_Result()			CProfilePQCSRate::Inst().CProfilePQCSRate::PrintResult()
 #else
 #define Increase_Send_Total()	
-#define Increase_Pqcs_total()
+#define Increase_Pqcs_Total()
 #define Print_Result()
 #endif
 
