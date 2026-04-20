@@ -101,9 +101,9 @@ void Net::stZoneSession::Clear()
 	// 센드큐는 직접 비우자..
 	//---------------------------------------------------
 	Net::CPacket* freePacket;
-	while (sendQ->isEmpty() == false)
+	while (sendQ->GetSize() > 0)
 	{
-		if (sendQ->Dequeue(freePacket))
+		if (sendQ->Dequeue_Single(freePacket))
 		{
 			int retFree = CPACKET_FREE(freePacket);
 			if (retFree)
@@ -328,7 +328,7 @@ bool stZoneSession::SendPost()
 	//--------------------------------------------------
 	// 빈 큐인지 검사
 	//--------------------------------------------------
-	if (sendQ->isEmpty())
+	if (sendQ->GetSize() <= 0)
 	{
 		//-----------------------------------------------
 		// 보낼게 없음
@@ -337,7 +337,7 @@ bool stZoneSession::SendPost()
 		// ** 따라서 0으로 바꾼 후 한번 더 확인 필요
 		//-----------------------------------------------
 		_InterlockedExchange(&isSending, 0);
-		if (sendQ->isEmpty())
+		if (sendQ->GetSize() <= 0)
 		{
 			//----------------------------------------
 			// 이건 진짜 없어서 나감
@@ -393,7 +393,7 @@ TRY_SEND:
 	//---------------------------------------------------
 	while (i < SERVER_SEND_WSABUF_MAX)
 	{
-		bool ret = sendQ->Dequeue(pPacket);
+		bool ret = sendQ->Dequeue_Single(pPacket);
 		if (ret)
 		{
 			CPACKET_UPDATE_TRACE(pPacket);
@@ -426,7 +426,7 @@ TRY_SEND:
 		_InterlockedExchange(&isSending, 0);
 		//if ((refcount & SESSION_RELEASE_FLAG) == SESSION_RELEASE_FLAG)
 		//	s_ServerSyslog.Log(TAG_NET, c_syslog::en_ERROR, L"[sessionId: %016llx] (i == 0인이유가 릴리즈..? 되면 안되는데)", refcount);
-		if (sendQ->isEmpty())
+		if (sendQ->GetSize() <= 0)
 		{
 			//------------------------------------------
 			// 진짜 빈거, 외부에서 참조카운트 내려야함
