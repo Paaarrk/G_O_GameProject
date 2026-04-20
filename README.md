@@ -12,6 +12,11 @@
 # Game Project
 
 
+# ThirdPartyLib
+1) Tacopie
+2) cppredis
+3) MySQL Connector C
+
 # Details
 
 <div id="lock-free-details"></div>
