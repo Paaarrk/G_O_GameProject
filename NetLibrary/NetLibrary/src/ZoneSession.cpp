@@ -325,153 +325,78 @@ bool Net::stZoneSession::RecvPost()
 bool stZoneSession::SendPost()
 {
 	WSABUF wsabufs[SERVER_SEND_WSABUF_MAX];
-	//--------------------------------------------------
-	// 빈 큐인지 검사
-	//--------------------------------------------------
-	if (sendQ->GetSize() <= 0)
+	int useSize;
+	Net::CPacket* pPacket;
+	int i;
+
+	do
 	{
-		//-----------------------------------------------
-		// 보낼게 없음
-		// ** 바로 리턴하면 이 사이에 뭔가 들어왔다가 리턴햇을 수 있음
-		//    => 그렇게 되면 아얘 Send를 못하는 현상 발생(여기서도리턴)
-		// ** 따라서 0으로 바꾼 후 한번 더 확인 필요
-		//-----------------------------------------------
-		_InterlockedExchange(&isSending, 0);
-		if (sendQ->GetSize() <= 0)
+		useSize = 0;
+		pPacket = nullptr;
+		//---------------------------------------------------
+		// 일단 꺼내보고
+		//---------------------------------------------------
+		for (i = 0; i < SERVER_SEND_WSABUF_MAX; ++i)
 		{
-			//----------------------------------------
-			// 이건 진짜 없어서 나감
-			// WSASend안하니까 false반환
-			//----------------------------------------
-			
-			return false;
-		}
-		else
-		{
-			long trySend = _InterlockedExchange(&isSending, 1);
-			if (trySend == 0)
+			bool ret = sendQ->Dequeue_Single(pPacket);
+			if (ret)
 			{
-				//----------------------------------------
-				// 내가 획득함
-				//----------------------------------------
-				if (isDisconnect == 1)
-				{
-					//------------------------------------
-					// 끊어야 되는애라 보낼 이유 X
-					//------------------------------------
-					_InterlockedExchange(&isSending, 0);
-					
-					return false;
-				}
-				else
-				{
-					//------------------------------------
-					// 여기를 나가서  아래 센드를 하러감
-					//------------------------------------
-					// 비어잇을 수 있음
-					// isEmpty비교와 isSending변환은 원자적이지 않아서
-				}
+				CPACKET_UPDATE_TRACE(pPacket);
+				wsabufs[i].buf = pPacket->GetBufferPtr();
+				wsabufs[i].len = pPacket->GetDataSize();
+				useSize += wsabufs[i].len;
+				sendPackets[i] = pPacket;
 			}
 			else
 			{
-				//----------------------------------------
-				// 이건 다른애가 보내고있는거라 나감
-				// WSASend안하니까 false 반환
-				//----------------------------------------
-				
-				return false;
+				// 큐가 비었다고 판단함
+				break;
 			}
 		}
-	}
 
-TRY_SEND:
-	int useSize = 0;
-	int i = 0;
-	Net::CPacket* pPacket = 0;
-	//---------------------------------------------------
-	// 일단 꺼내보고
-	//---------------------------------------------------
-	while (i < SERVER_SEND_WSABUF_MAX)
-	{
-		bool ret = sendQ->Dequeue_Single(pPacket);
-		if (ret)
+		if (i == 0) // Queue is Empty
 		{
-			CPACKET_UPDATE_TRACE(pPacket);
-			wsabufs[i].buf = pPacket->GetBufferPtr();
-			wsabufs[i].len = pPacket->GetDataSize();
-			useSize += wsabufs[i].len;
-			sendPackets[i] = pPacket;
-			i++;
-		}
-		else
-		{
-			break;
-		}
-	}
-	//---------------------------------------------------
-	// 없으면 리턴
-	// i == 0을 못피하는이유
-	// 첫 Empty == false,
-	// 두번째 Empty ->이미 누가 너헝서 true
-	// 여기서 자고 온 사이 누가 다 보냈음.
-	// 깨어나서 재획득 -> Empty
-	//---------------------------------------------------
-	if (i == 0)
-	{
-		//-----------------------------------------------
-		// 보낼게 없음
-		//-----------------------------------------------
-		//s_ServerSyslog.Log(TAG_NET, c_syslog::en_ERROR, L"[sessionId: %016llx] (i == 0인 경우) 왜 나올까...?", sessionId);
-		//__debugbreak();
-		_InterlockedExchange(&isSending, 0);
-		//if ((refcount & SESSION_RELEASE_FLAG) == SESSION_RELEASE_FLAG)
-		//	s_ServerSyslog.Log(TAG_NET, c_syslog::en_ERROR, L"[sessionId: %016llx] (i == 0인이유가 릴리즈..? 되면 안되는데)", refcount);
-		if (sendQ->GetSize() <= 0)
-		{
-			//------------------------------------------
-			// 진짜 빈거, 외부에서 참조카운트 내려야함
-			//------------------------------------------
-			
-			return false;
-		}
-		else
-		{
-			long trySend = _InterlockedExchange(&isSending, 1);
-			if (trySend == 0)
+			//-----------------------------------------------
+			// 보낼게 없음
+			//-----------------------------------------------
+			_InterlockedExchange(&isSending, 0);
+			if (sendQ->GetSize() <= 0)
 			{
-				//----------------------------------------
-				// 내가 획득함
-				//----------------------------------------
-				if (isDisconnect == 1)
-				{
-					//------------------------------------
-					// 끊어야 되는애라 보낼 이유 X
-					//------------------------------------
-					_InterlockedExchange(&isSending, 0);
-					
-					return false;
-				}
-				else
-				{
-					//------------------------------------
-					// 여기를 나가서 다시 위로
-					// 대강 3시간에 1번 발생
-					//------------------------------------
-					goto TRY_SEND;
-				}
+				//------------------------------------------
+				// 진짜 빈거, 외부에서 참조카운트 내려야함
+				//------------------------------------------
+				return false;
 			}
 			else
 			{
-				//------------------------------------------
-				// 다른애가 보내고있는거, 
-				// 외부에서 참조카운트 내려야함
-				//------------------------------------------
-				
-				return false;
+				long trySend = _InterlockedExchange(&isSending, 1);
+				if (trySend == 0)
+				{
+					//----------------------------------------
+					// 내가 획득함
+					//----------------------------------------
+					if (isDisconnect == 1)
+					{
+						//------------------------------------
+						// 끊어야 되는애라 보낼 이유 X
+						//------------------------------------
+						_InterlockedExchange(&isSending, 0);
+						return false;
+					}
+				}
+				else
+				{
+					//------------------------------------------
+					// 다른애가 보내고있는거, 
+					// 외부에서 참조카운트 내려야함
+					//------------------------------------------
+					return false;
+				}
 			}
 		}
-	}
+	} while (i == 0);	// i > 0 이면 나와야
 
+	// i > 0 (보낼 개수가 0보다 큼)
 	sendOl->sendbyte = useSize;
 	sendPacketsCnt = i;
 	//---------------------------------------------------
@@ -499,7 +424,7 @@ TRY_SEND:
 			// 0이라면 해제하면된다!
 			// . LogEx는 특수한 연결종료일 경우 로그 남겨줌
 			//-------------------------------------------
-			Core::c_syslog::logging().LogEx(TAG_NET, err, Core::c_syslog::en_DEBUG, L"[sessionId: %016llx] WSASend실패, 연결 종료된 세션", sessionId);
+			Core::c_syslog::logging().LogEx(TAG_NET, err, Core::c_syslog::en_SYSTEM, L"[sessionId: %016llx] WSASend실패, 연결 종료된 세션", sessionId);
 
 			//-------------------------------------------
 			// 내가 보내려고 설정한거도 해제, 

@@ -1189,44 +1189,28 @@ unsigned int Net::CZoneServer::NetServerWorkerFunc(void* param)
 			{
 				
 				//--------------------------------------------------
+				// [26.04.20]
 				// 센드 성공! 
-				// . 일단 isSending은 0으로
-				// . 참조 카운트는 유지하고 센드 권한을 얻지 못하면
-				//   내려준다.
+				// . 컨텐츠가 PQCS를 큐에 넣지 않도록 최대한 워커는 잡는쪽으로 하자
+				// . 여기서 플래그를 포기하지 않고 일단 SendPost진입하자
 				//--------------------------------------------------
 				pOverlapped->sendbyte = 0;
-				_InterlockedExchange(&pSession->isSending, 0);
-
-				long isSending = _InterlockedExchange(&pSession->isSending, 1);
-				if (isSending == 0)
+				// Current send flag is 1, 내가 만든 Disconnect는 아니라서 recvol취소는 하지 않아도 됨 
+				if (pSession->isDisconnect == 1)
 				{
-					if (pSession->isDisconnect == 1)
-					{
-						_InterlockedExchange(&pSession->isSending, 0);
-						nowServer->DecrementRefcount(pSession);
-					}
-					else
-					{
-						bool isFine = pSession->SendPost();
-						if (isFine == false)
-						{
-							//-----------------------------------------------
-							// isSending은 0이 된 상태. 참조 카운트도 해제함
-							//-----------------------------------------------
-							nowServer->DecrementRefcount(pSession);
-						}
-					}
+					_InterlockedExchange(&pSession->isSending, 0);
+					nowServer->DecrementRefcount(pSession);
 				}
 				else
 				{
-					//---------------------------------------------------
-					// isSending 이미 1임. 다른 워커가 보내는중
-					// 완료통지에서 참조카운트 내려줘야함
-					// ** 중요 ** 여기서 잠들면 isSending이 0 될수 있음.
-					// 그래서 refcount 확인 필요
-					//---------------------------------------------------
-					nowServer->DecrementRefcount(pSession);
+					bool isFine = pSession->SendPost();
+					if (isFine == false)
+					{
+						// isSending은 0이 된 상태. 참조 카운트도 해제함
+						nowServer->DecrementRefcount(pSession);
+					}
 				}
+				// [26.04.20]
 			}
 		}
 		else // Recv
