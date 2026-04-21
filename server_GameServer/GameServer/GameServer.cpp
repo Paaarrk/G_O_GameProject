@@ -1,0 +1,152 @@
+#include "GameServer.h"
+#include "21_TextParser.h"
+
+#include "logclassV1.h"
+using Log = Core::c_syslog;
+
+bool CGameServer::stGameServerOpt::LoadOption(const char* path)
+{
+	CParser config(path);
+	try
+	{
+		config.LoadFile();
+
+		int bUseEncode;
+		config.GetValue("GAME_SERVER", "bUseEncode", &bUseEncode);
+		this->bUseEncode = (bool)bUseEncode;
+
+		int bUseSO_SNDBUF;
+		config.GetValue("GAME_SERVER", "bUseSO_SNDBUF", &bUseSO_SNDBUF);
+		this->bUseSO_SNDBUF = (bool)bUseSO_SNDBUF;
+
+		int bUseTCP_NODELAY;
+		config.GetValue("GAME_SERVER", "bUseTCP_NODELAY", &bUseTCP_NODELAY);
+		this->bUseTCP_NODELAY = (bool)bUseTCP_NODELAY;
+
+		int iMaxConcurrentUsers;
+		config.GetValue("GAME_SERVER", "iMaxConcurrentUsers", &iMaxConcurrentUsers);
+		this->iMaxConcurrentUsers = iMaxConcurrentUsers;
+
+		int iWorkerThreadCreateCnt;
+		config.GetValue("GAME_SERVER", "iWorkerThreadCreateCnt", &iWorkerThreadCreateCnt);
+		this->iWorkerThreadCreateCnt = iWorkerThreadCreateCnt;
+
+		int iWorkerThreadRunCnt;
+		config.GetValue("GAME_SERVER", "iWorkerThreadRunCnt", &iWorkerThreadRunCnt);
+		this->iWorkerThreadRunCnt = iWorkerThreadRunCnt;
+
+		char openIP[16];
+		config.GetValue("GAME_SERVER", "openIP", openIP);
+		MultiByteToWideChar(CP_ACP, 0, openIP, 16, this->openIP, 16);
+
+		int port;
+		config.GetValue("GAME_SERVER", "port", &port);
+		this->port = (unsigned short)port;
+
+		int serverCode;
+		config.GetValue("GAME_SERVER", "serverCode", &serverCode);
+		server_code = (uint8)serverCode;
+
+		int staticKey;
+		config.GetValue("GAME_SERVER", "staticKey", &staticKey);
+		this->static_key = (uint8)staticKey;
+
+		// Game
+
+		int lobbyMaxUser;
+		config.GetValue("GAME_SERVER", "lobbyMaxUsers", &lobbyMaxUser);
+		this->lobbyMaxUser = lobbyMaxUser;
+
+		int gameMaxUsers;
+		config.GetValue("GAME_SERVER", "gameMaxUsers", &gameMaxUsers);
+		this->gameMaxUser = gameMaxUsers;
+
+		int lobbyMinimumTick;
+		config.GetValue("GAME_SERVER", "lobbyMinimumTick", &lobbyMinimumTick);
+		this->lobbyMinimumTick = lobbyMinimumTick;
+
+		int gameMinimumTick;
+		config.GetValue("GAME_SERVER", "gameMinimumTick", &gameMinimumTick);
+		this->gameMinimumTick = gameMinimumTick;
+
+		int maxZoneCnt;
+		config.GetValue("GAME_SERVER", "maxZoneCnt", &maxZoneCnt);
+		this->maxZoneCnt = maxZoneCnt;
+	}
+	catch (std::invalid_argument& e)
+	{
+		wchar_t buffer[256];
+		MultiByteToWideChar(CP_ACP, 0, e.what(), -1, buffer, 256);
+		Log::logging().Log(TAG_CONTENTS, Log::en_ERROR,
+			L"%s", buffer);
+		return false;
+	}
+	return true;
+}
+
+//-----------------------------------------------------
+// Event Functions
+//-----------------------------------------------------
+bool CGameServer::OnInit(const Net::CZoneServer::stServerOpt* pOpt)
+{
+	
+	return true;
+}
+bool CGameServer::OnAccept(uint64_t sessionId, in_addr ip, wchar_t* wip)
+{
+
+	return true;
+}
+bool CGameServer::OnConnectionRequest(in_addr ip)
+{
+
+	return true;
+}
+
+// NetInterface
+
+void CGameServer::OnRelease(uint64_t sessionId)
+{
+
+}
+void CGameServer::OnMessage(uint64_t sessionId, Net::CPacket* pPacket, int len)
+{
+
+}
+
+// IOCP차원
+
+void CGameServer::OnWorkerStart()
+{
+
+}
+void CGameServer::OnWorkerEnd()
+{
+
+}
+void CGameServer::OnUserEvent(Net::CPacket* pPacket)
+{
+
+}
+
+// 중지와 종료
+
+void CGameServer::OnStop()
+{
+
+}
+void CGameServer::OnExit()
+{
+
+}
+
+// 생성자
+CGameServer::CGameServer()
+{
+
+}
+// 소멸자
+CGameServer::~CGameServer()
+{
+
+}

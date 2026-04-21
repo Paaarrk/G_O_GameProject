@@ -1,3 +1,11 @@
+/server_GameServer/.vs/
+/server_GameServer/x64/
+/server_GameServer/GameServer/x64/
+/server_GameServer/Debug/
+/server_GameServer/Release/
+/server_GameServer/GameServer/Debug/
+/server_GameServer/GameServer/Release/
+
 /TestModules/.vs
 /TestModules/x64
 /TestModules/TestModules/x64

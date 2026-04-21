@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="소스 파일\Server">
+      <UniqueIdentifier>{d512412a-20cc-4b50-a5b0-b6381ef464b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Server">
+      <UniqueIdentifier>{a1052fd9-151a-4a0d-b759-1f5242844783}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Protocol">
+      <UniqueIdentifier>{601d238b-3909-4774-bfe0-4717c5edb0bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Objects">
+      <UniqueIdentifier>{5483bfe5-2746-4921-9162-c6481efd669b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Objects">
+      <UniqueIdentifier>{8c427255-94ba-4e0d-beaa-bdb3c4f735c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Tools">
+      <UniqueIdentifier>{65b05059-e783-4cb3-a3ec-8406c29d23d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Tools">
+      <UniqueIdentifier>{cbb8a72d-7fc2-4de7-aeb7-53a1f54f058c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Contents">
+      <UniqueIdentifier>{294194dc-d3e2-4d7e-86cd-f66ba0062aa3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Contents">
+      <UniqueIdentifier>{3501b25f-d0b8-4a31-921d-d63c1c0c9389}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="GameServer.cpp">
+      <Filter>소스 파일\Server</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>소스 파일\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="21_TextParser.cpp">
+      <Filter>소스 파일\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobby.cpp">
+      <Filter>소스 파일\Contents</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GameServer.h">
+      <Filter>헤더 파일\Server</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonProtocol.h">
+      <Filter>헤더 파일\Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>헤더 파일\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Contents.h">
+      <Filter>헤더 파일\Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="21_TextParser.h">
+      <Filter>헤더 파일\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobby.h">
+      <Filter>헤더 파일\Contents</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
