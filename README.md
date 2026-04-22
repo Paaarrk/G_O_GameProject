@@ -7,10 +7,18 @@
 
 | 기간 | 내용 | 상세 링크 |
 |-----|-----|----|
-| 4. 14 ~  | 락프리 큐 개선 | [[개선 사항](#lock-free-details)] |
+| 4. 14 ~ 4.19 | 락프리 큐 개선 | [[개선 사항](#lock-free-details)] |
+| 4. 20 | SendPost() 개선 | [[개선 사항](#send-post-details)] |
 
 # Game Project
+| 기간 | 내용 | 목표 | 상세 링크 |
+|-----|-----|----|---|
+| 4. 21 ~ | v1.0 | 작동만 되게 만들기 | [[ v1.0 ](#v1.0)] |
 
+# ThirdPartyLib
+1) Tacopie
+2) cppredis
+3) MySQL Connector C
 
 # Details
 
@@ -332,7 +340,10 @@ LeftQueueSize: 0
 2. 불필요한 Interlocked 연산을 줄여 falsesharing 가능성을 줄임
 
 ### 3. 서버에 적용 테스트
-// todo
+
+1. 유의미한 차이를 찾지 못했다. 
+- 세션 자체가 15000개, 유저 1만명에서 크게 경합이 생길 수 있는 상황은 아니였기 때문에 기존 코드와 비교해서 차이가 없었다.
+- align을 안하는 것이 좀 더 처리가 수월했다. 경합이 잘 생기지 않아 전체적으로 캐시 라인을 띄엄띄엄 읽는것 보다 한번에 읽어오는게 더 좋은 것은 것으로 보여진다.
 
 
 #### < 테스트 결과 txt >
@@ -388,8 +399,48 @@ LeftQueueSize: 0
 </details>
 </details>
 
+
 </br>
 
-<div id="lock-free-details"></div><details>
+<div id="send-post-details"></div>
+
+### 1. Send 로직 개선
+#### < 목표 >
+- 가독성 개선
+- 전용 MPSC Dequeue를 활용해 원자연산 줄이기
+
+<details>
 <summary> 네트워크 코드의 Send루프 가독성 강화  </summary>
+
+### 1. 기존 코드의 문제
+
+1. 기존의 SendPost는 읽기 힘든 루프 구조 (goto도 사용)
+- do while로 깔끔하게 묶는 방향으로 개선
+2. 기존의 Send 완료 통지 이후 플래그를 포기하고 재획득 하는 불필요 로직 존재
+- 게임 로직에서 SendPacket 이후 PQCS SendPost를 덜 호출하는 방향으로 유도하기 위해 Send 완료 통지에서 플래그를 포기하지 않고 SendPost를 바로 진행 (큐에 한개라도 넣었다면 완료통지에서 바로 재진행 하도록)
+
+### 2. 개선 결과
+1. 가독성 향상, 코드 길이 감소 (WSABUF에 디큐해서 메시지를 넣는 로직)
+- 300만회의 샘플을 통해 개선 부분의 루프 측정 결과 소폭 감소
+- 5.6483㎲ ->  4.7559㎲
+
+2. 실제로 게임 로직이 덜 SendPacket내부에서 PQCS SendPost 호출하는지는 (보낼 것을 큐에만 넣고 나가는지는) 게임을 만들어 Broadcast로 한 게임 루프 틱에서 여러번 같은 세션에 대해 SendPacket을 호출 할 때 측정이 가능할 것으로 보임.
+- 에코 서버 기준으로는 1천만회 Send호출 중 기존 코드는 1.0054%, 개선 코드는 1.0031%로 거의 비슷한 수치를 보임.
+
+</details>
+
+</br>
+
+<div id="v1.0"></div>
+
+### 1. 게임 제작 시작 (v1.0)
+#### < 목표 >
+- 가장 간단히 동작하게 만들기 
+- 추후 기능 추가나 개선 방향 잡기
+
+<details>
+<summary> 04.21 ~  </summary>
+
+
+
 </details>
