@@ -11,7 +11,9 @@
 | 4. 20 | SendPost() 개선 | [[개선 사항](#send-post-details)] |
 
 # Game Project
-
+| 기간 | 내용 | 목표 | 상세 링크 |
+|-----|-----|----|---|
+| 4. 21 ~ | v1.0 | 작동만 되게 만들기 | [[ v1.0 ](#v1.0)] |
 
 # ThirdPartyLib
 1) Tacopie
@@ -401,6 +403,12 @@ LeftQueueSize: 0
 </br>
 
 <div id="send-post-details"></div>
+
+### 1. Send 로직 개선
+#### < 목표 >
+- 가독성 개선
+- 전용 MPSC Dequeue를 활용해 원자연산 줄이기
+
 <details>
 <summary> 네트워크 코드의 Send루프 가독성 강화  </summary>
 
@@ -421,3 +429,18 @@ LeftQueueSize: 0
 
 </details>
 
+</br>
+
+<div id="v1.0"></div>
+
+### 1. 게임 제작 시작 (v1.0)
+#### < 목표 >
+- 가장 간단히 동작하게 만들기 
+- 추후 기능 추가나 개선 방향 잡기
+
+<details>
+<summary> 04.21 ~  </summary>
+
+
+
+</details>
