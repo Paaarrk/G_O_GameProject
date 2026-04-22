@@ -1,10 +1,11 @@
-/server_GameServer/.vs/
-/server_GameServer/x64/
-/server_GameServer/GameServer/x64/
-/server_GameServer/Debug/
-/server_GameServer/Release/
-/server_GameServer/GameServer/Debug/
-/server_GameServer/GameServer/Release/
+/server_GameServer/.vs
+/server_GameServer/x64/Config
+/server_GameServer/x64
+/server_GameServer/GameServer/x64
+/server_GameServer/GameServer/Release
+/server_GameServer/GameServer/Debug
+/server_GameServer/GameServer/Config
+
 
 /TestModules/.vs
 /TestModules/x64
@@ -17,6 +18,8 @@
 /Core/.vs/
 /Core/x64/
 /Core/Core/x64/
+/Core/Core/Config/
+/Core/Core/x64/Config/
 /Core/Debug/
 /Core/Release/
 /Core/Core/Debug/
@@ -25,6 +28,8 @@
 /NetLibrary/.vs/
 /NetLibrary/x64/
 /NetLibrary/NetLibrary/x64/
+/NetLibrary/NetLibrary/Config/
+/NetLibrary/NetLibrary/x64/Config/
 /NetLibrary/Debug/
 /NetLibrary/Release/
 /NetLibrary/NetLibrary/Debug/
@@ -33,8 +38,10 @@
 /server_ChatServer_Multi/.vs
 /server_ChatServer_Multi/ChatSever_Multi.slnLaunch.user
 /server_ChatServer_Multi/x64/
+/server_ChatServer_Multi/x64/Config
 /server_ChatServer_Multi/Debug/
 /server_ChatServer_Multi/Release/
+/server_ChatServer_Multi/Config/
 /server_ChatServer_Multi/ChatServer_Multi/x64
 /server_ChatServer_Multi/ChatServer_Multi/Debug
 /server_ChatServer_Multi/ChatServer_Multi/Release
@@ -42,8 +49,10 @@
 
 /server_LoginServer/.vs
 /server_LoginServer/x64/
+/server_LoginServer/x64/Config/
 /server_LoginServer/Debug/
 /server_LoginServer/Release/
+/server_LoginServer/Config/
 /server_LoginServer/LoginServer/x64
 /server_LoginServer/LoginServer/Debug
 /server_LoginServer/LoginServer/Release
@@ -51,8 +60,10 @@
 
 /server_ZoneServerEchoTest/.vs
 /server_ZoneServerEchoTest/x64/
+/server_ZoneServerEchoTest/x64/Config/
 /server_ZoneServerEchoTest/Debug/
 /server_ZoneServerEchoTest/Release/
+/server_ZoneServerEchoTest/Config/
 /server_ZoneServerEchoTest/ZoneServerEchoTest/x64
 /server_ZoneServerEchoTest/ZoneServerEchoTest/Debug
 /server_ZoneServerEchoTest/ZoneServerEchoTest/Release
@@ -60,8 +71,10 @@
 
 /server_MonitoringServer/.vs
 /server_MonitoringServer/x64
+/server_MonitoringServer/x64/Config
 /server_MonitoringServer/Debug
 /server_MonitoringServer/Release
+/server_MonitoringServer/Config/
 /server_MonitoringServer/NetLib/x64
 /server_MonitoringServer/NetLib/Debug
 /server_MonitoringServer/NetLib/Release
