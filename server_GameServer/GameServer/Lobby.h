@@ -9,7 +9,14 @@ class CLobby : public Net::CZone
 public:
 	CLobby();
 	~CLobby();
-
+	
+	CPlayer* FindPlayer(uint64_t sessionId)
+	{
+		auto it = _playerMap.find(sessionId);
+		if (it == _playerMap.end())
+			return nullptr;
+		return it->second;
+	}
 
 	//---------------------------------------------------------
 	// Event Functions
@@ -20,9 +27,13 @@ public:
 	virtual void OnLeave(uint64 sessionId, bool bNeedPlayerDelete);
 	virtual void OnMessage(uint64 sessionId, const char* readPtr, int payloadlen);
 
+
 private:
-	std::unordered_map<uint64_t, CPlayer*> _players;
-	
+
+	std::unordered_map<uint64_t, CPlayer*> _playerMap;
+	std::unordered_map<int64_t, uint64_t> _accountIdToSessionIdMap;
+	std::unordered_map<int64_t, CPlayer*> _accountIdToPlayerMap;
+	bool useTimeout;
 };
 
 #endif

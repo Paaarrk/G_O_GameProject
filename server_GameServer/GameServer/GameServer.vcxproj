@@ -138,6 +138,7 @@
     <ClCompile Include="21_TextParser.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="Lobby.cpp" />
+    <ClCompile Include="LobbyTimerJob.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />
   </ItemGroup>
@@ -155,6 +156,7 @@
     <ClInclude Include="Contents.h" />
     <ClInclude Include="GameServer.h" />
     <ClInclude Include="Lobby.h" />
+    <ClInclude Include="LobbyTimerJob.h" />
     <ClInclude Include="Player.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

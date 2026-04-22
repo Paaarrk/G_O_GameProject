@@ -40,6 +40,12 @@
     <Filter Include="소스 파일\Contents">
       <UniqueIdentifier>{3501b25f-d0b8-4a31-921d-d63c1c0c9389}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Contents\Lobby">
+      <UniqueIdentifier>{37e2f579-e4f5-4744-8adc-dabb740bb6d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Contents\Lobby">
+      <UniqueIdentifier>{f401e57f-affb-449f-809b-550a67a8da2b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -55,7 +61,10 @@
       <Filter>소스 파일\Tools</Filter>
     </ClCompile>
     <ClCompile Include="Lobby.cpp">
-      <Filter>소스 파일\Contents</Filter>
+      <Filter>소스 파일\Contents\Lobby</Filter>
+    </ClCompile>
+    <ClCompile Include="LobbyTimerJob.cpp">
+      <Filter>소스 파일\Contents\Lobby</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -75,7 +84,10 @@
       <Filter>헤더 파일\Tools</Filter>
     </ClInclude>
     <ClInclude Include="Lobby.h">
-      <Filter>헤더 파일\Contents</Filter>
+      <Filter>헤더 파일\Contents\Lobby</Filter>
+    </ClInclude>
+    <ClInclude Include="LobbyTimerJob.h">
+      <Filter>헤더 파일\Contents\Lobby</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
