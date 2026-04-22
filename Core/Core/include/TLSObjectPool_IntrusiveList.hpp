@@ -1240,6 +1240,8 @@ public:
 		if (pMyChunks == nullptr)
 		{
 			pMyChunks = (stChunks*)malloc(sizeof(stChunks));
+#pragma warning(push)
+#pragma warning(disable : 6011)	// pMyCHunks null이면 메모리 부족 문제
 			//---------------------------------------------------
 			// 최초 1회 시행
 			//---------------------------------------------------
@@ -1254,6 +1256,7 @@ public:
 				DWORD tlsError = GetLastError();
 				__debugbreak();
 			}
+#pragma warning(pop)
 		}
 		else
 		{
