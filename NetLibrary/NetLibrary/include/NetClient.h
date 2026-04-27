@@ -102,6 +102,7 @@ namespace Net
 		bool SendPacket(Net::CPacket* pPacket);
 
 
+
 		void Exit();
 
 		// 상속자 구현 함수 ==================//
