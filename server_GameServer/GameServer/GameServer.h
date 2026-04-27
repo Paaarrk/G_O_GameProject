@@ -2,6 +2,7 @@
 #define __GAME_SERVER_H__
 #include "ZoneServer.h"
 #include "Contents.h"
+#include "RedisConnector.h"
 
 class CGameServer : Net::CZoneServer
 {
@@ -13,6 +14,9 @@ public:
 		int32_t lobbyMinimumTick;
 		int32_t gameMinimumTick;
 		int32_t maxZoneCnt;
+
+		char	redisIp[IPV4_LEN];
+		int16_t authRedisPort;
 
 		bool LoadOption(const char* path = CONFIG_FILE_PATH);
 	};
@@ -43,8 +47,13 @@ public:
 	// 생성자
 	CGameServer();
 	virtual ~CGameServer();
+
+	// 레디스 커넥터
+	static CRedisConnector& GetRedisConnector() { return s_conn_auth; }
 private:
 	uint64_t _lobbyId = 0;
+
+	static CRedisConnector s_conn_auth;
 };
 
 #endif

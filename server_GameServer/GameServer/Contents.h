@@ -10,13 +10,18 @@ inline static int64_t GetDeltaTimeMs(const TimePoint& end, const TimePoint& star
 	return duration_cast<ms>(end - start).count();
 }
 
-inline const wchar_t* TAG_LOBBY =		L"Lobby";
-inline const wchar_t* TAG_GAME =		L"Game";
-inline const wchar_t* TAG_MESSAGE =		L"Message";
-inline const char*	 CONFIG_FILE_PATH = "..\\Config\\Config.cnf";
+inline const wchar_t*	TAG_CONTENTS =		L"Contents";
+inline const wchar_t*	TAG_LOBBY =			L"Lobby";
+inline const wchar_t*	TAG_GAME =			L"Game";
+inline const wchar_t*	TAG_MESSAGE =		L"Message";
+inline const wchar_t*	TAG_TO_CHAT =		L"ClientToChat";
+inline const char*		CONFIG_FILE_PATH =	"..\\Config\\Config.cnf";
 
-inline constexpr int SESSION_KEY_LEN = 64;
-inline constexpr int IPV4_LEN = 16;
+template<typename... Args>
+constexpr inline int32_t SizeOf(Args&&... args)
+{
+	return (static_cast<int32_t>(sizeof(args)) + ...);
+}
 
 enum en_POOL_KEYS
 {
@@ -25,6 +30,11 @@ enum en_POOL_KEYS
 
 enum en_CONTENTS
 {
+	SIGNAL_OFF = 0,
+	SIGNAL_ON = 1,
+	SESSION_KEY_LEN = 64,
+	IPV4_LEN = 16,
+
 	GMAE_NICKNAME_LEN = 20,
 
 	CONTENTS_ID_LOBBY = 1,
@@ -34,4 +44,6 @@ enum en_CONTENTS
 
 	TIME_OUT_MS_LOBBY = 20000,
 	TIME_OUT_MS_GAME = 40000,
+
+	LOBBY_RINGBUFFER_SIZE = 5000,
 };

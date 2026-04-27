@@ -46,6 +46,15 @@
     <Filter Include="헤더 파일\Contents\Lobby">
       <UniqueIdentifier>{f401e57f-affb-449f-809b-550a67a8da2b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="헤더 파일\Redis">
+      <UniqueIdentifier>{d8bbd15e-a007-4427-9e35-127753a33739}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Client">
+      <UniqueIdentifier>{10b14026-e829-4706-bc3e-1e4a332e1de4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Client">
+      <UniqueIdentifier>{0b4721f4-da1b-469b-84a8-750596c78273}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -65,6 +74,12 @@
     </ClCompile>
     <ClCompile Include="LobbyTimerJob.cpp">
       <Filter>소스 파일\Contents\Lobby</Filter>
+    </ClCompile>
+    <ClCompile Include="RedisConnector.cpp">
+      <Filter>헤더 파일\Redis</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientToChat.cpp">
+      <Filter>소스 파일\Client</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,6 +103,12 @@
     </ClInclude>
     <ClInclude Include="LobbyTimerJob.h">
       <Filter>헤더 파일\Contents\Lobby</Filter>
+    </ClInclude>
+    <ClInclude Include="RedisConnector.h">
+      <Filter>헤더 파일\Redis</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientToChat.h">
+      <Filter>헤더 파일\Client</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

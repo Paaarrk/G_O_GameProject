@@ -1,8 +1,11 @@
 #include "GameServer.h"
+#include "Contents.h"
 #include "21_TextParser.h"
 
 #include "logclassV1.h"
 using Log = Core::c_syslog;
+
+CRedisConnector CGameServer::s_conn_auth;
 
 bool CGameServer::stGameServerOpt::LoadOption(const char* path)
 {
@@ -89,7 +92,14 @@ bool CGameServer::stGameServerOpt::LoadOption(const char* path)
 //-----------------------------------------------------
 bool CGameServer::OnInit(const Net::CZoneServer::stServerOpt* pOpt)
 {
+	stGameServerOpt& opt = *(stGameServerOpt*)pOpt;
+	opt.LoadOption();
+
+	// Redis Connector √ ±‚»≠
+	CGameServer::s_conn_auth.Init(opt.redisIp, opt.authRedisPort, 3);
 	
+	
+
 	return true;
 }
 bool CGameServer::OnAccept(uint64_t sessionId, in_addr ip, wchar_t* wip)
