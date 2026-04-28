@@ -12,7 +12,7 @@ int main()
 	CLobby lobby;
 	char skey[64];
 	int a;
-	printf("%d", SizeOf(skey, a));
+	printf("%d", SizeOf());
 
 	return 0;
 }

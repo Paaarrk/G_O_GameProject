@@ -5,7 +5,9 @@
 #include "logclassV1.h"
 using Log = Core::c_syslog;
 
+CClientToLoginServer CGameServer::s_toLoginServerClient;
 CRedisConnector CGameServer::s_conn_auth;
+
 
 bool CGameServer::stGameServerOpt::LoadOption(const char* path)
 {
@@ -97,7 +99,19 @@ bool CGameServer::OnInit(const Net::CZoneServer::stServerOpt* pOpt)
 
 	// Redis Connector √ ±‚»≠
 	CGameServer::s_conn_auth.Init(opt.redisIp, opt.authRedisPort, 3);
+	Net::CClient::stClientOpt clientopt;
+	clientopt.bUseBind = false;
+	clientopt.bUseEncode = false;
+	clientopt.bUseSO_SNDBUF = true;
+	clientopt.bUseTCP_NODELAY = false;
+	clientopt.client_code = opt.loginCode;
+	clientopt.iWorkerThreadCreateCnt = 1;
+	clientopt.iWorkerThreadRunCnt = 1;
+	memcpy(clientopt.targetIP, opt.loginIp, IPV4_LEN * sizeof(wchar_t));
+	clientopt.targetPort = opt.loginPort;
 	
+	if (CGameServer::s_toLoginServerClient.Init(&clientopt) == false)
+		return false;
 	
 
 	return true;

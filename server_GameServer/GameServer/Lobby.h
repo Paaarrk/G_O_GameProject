@@ -5,7 +5,7 @@
 #include <thread>
 #include <atomic>
 #include "RingBufferV4.h"
-#include "ClientToChat.h"
+#include "ClientToLogin.h"
 #include "LockFreeQueue.hpp"
 #include "Contents.h"
 
@@ -17,11 +17,13 @@ struct stAuthRequest
 	int64_t		accountNo;
 	char		sessionKey64[SESSION_KEY_LEN];
 	char		ip[IPV4_LEN];
+
+	void ExitSignal() noexcept { sessionId = 0; }
 #pragma warning(push)
 #pragma warning(disable: 26495)	// 초기화 필요성 없음
-	stAuthRequest() {}
+	stAuthRequest() noexcept {}
 #pragma warning(pop)
-	stAuthRequest(uint64_t sessionid, int64_t accno, char(&skey)[SESSION_KEY_LEN], char(&ip)[IPV4_LEN])
+	stAuthRequest(uint64_t sessionid, int64_t accno, char(&skey)[SESSION_KEY_LEN], char(&ip)[IPV4_LEN]) noexcept
 		:sessionId(sessionid), accountNo(accno)
 	{
 		memcpy(sessionKey64, skey, SESSION_KEY_LEN);
@@ -58,27 +60,15 @@ public:
 		return it->second;
 	}
 
-	// 교환 했으면 기존 세션id, 새로 붙였으면 0
-	uint64_t ExchangeLoginSession(int64_t accountNo, uint64_t sessionId)
-	{
-		auto it = _loginAccountNoToSessionIdMap.find(accountNo);
-		if (it == _loginAccountNoToSessionIdMap.end())
-		{
-			_loginAccountNoToSessionIdMap.insert({ accountNo, sessionId });
-			return false;
-		}
-		// 이미 로그인 된 유저가 있음
-		uint64_t befId = it->second;
-		it->second = sessionId;
-		return befId;
-	}
-
-	CPlayer* FindLogoutPlayerObject(int64_t accountNo) const
+	// 내부에서 지우고 그 포인터를 돌려줌 (사용 후 풀에 반환 필요)
+	CPlayer* GetLogoutPlayerMemory(int64_t accountNo)
 	{
 		auto it = _logoutAccountNoToPlayerMap.find(accountNo);
 		if (it == _logoutAccountNoToPlayerMap.end())
 			return nullptr;
-		return it->second;
+		CPlayer* ret = it->second;
+		_logoutAccountNoToPlayerMap.erase(it);
+		return ret;
 	}
 
 	//---------------------------------------------------------
@@ -94,7 +84,7 @@ public:
 private:
 	uint16_t CheckType(const char*& readPtr, int32_t& len) noexcept
 	{
-		if (len < sizeof(uint16_t))
+		if (len < MESSAGE_HEADER_LEN)
 			return 0;
 		uint16_t type;
 		memcpy(&type, readPtr, sizeof(uint16_t));
@@ -108,7 +98,13 @@ private:
 	//----------------------------------
 
 	bool RequestLogin(uint64_t sessionId, const char* readptr, int32_t payloadlen);
-	void RequestDefault(uint16_t type, const char* readptr, int32_t payloadlen);
+
+
+	//----------------------------------
+	// From Login Server
+	//----------------------------------
+	// 로그인 서버 큐 비우기
+	void CheckLoginServerResponses();
 
 	//----------------------------------
 	// Redis
@@ -121,12 +117,12 @@ private:
 	// 레디스 큐 비우기
 	void CheckRedisResponses();
 
+
 	//----------------------------------
-	// Master (Chat Server)
+	// DB
 	//----------------------------------
-	// 마스터 큐 비우기
-	void CheckMasterResponses();
-	void ResponseMasterAccept(Net::CPacket* packet);
+	
+	void CheckDBResponses();
 
 
 	//----------------------------------
@@ -140,7 +136,11 @@ private:
 
 	std::unordered_map<uint64_t, CPlayer*> _lobbyPlayerMap;
 	std::unordered_map<int64_t, uint64_t> _loginAccountNoToSessionIdMap;
+
+	// 계정이랑 엮이지도 않고 정말 메모리만 덩그러니 있는 상태,
+	// 단, DB에 저장중 일 수는 있음
 	std::unordered_map<int64_t, CPlayer*> _logoutAccountNoToPlayerMap;
+	
 	bool _useTimeout;
 
 	std::thread _redisThread;
@@ -148,8 +148,7 @@ private:
 	Core::RingBuffer _redisToLobby;
 	std::atomic<int32_t> _signal;
 
-	CClientToChat _toMasterClient;
-	Core::CLockFreeQueue<Net::CPacket*> _fromMasterQ;
+	Core::CLockFreeQueue<Net::CPacket*> _fromLoginQ;
 };
 
 

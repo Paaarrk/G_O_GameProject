@@ -136,7 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="21_TextParser.cpp" />
-    <ClCompile Include="ClientToChat.cpp" />
+    <ClCompile Include="ClientToLogin.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="Lobby.cpp" />
     <ClCompile Include="LobbyTimerJob.cpp" />
@@ -154,7 +154,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="21_TextParser.h" />
-    <ClInclude Include="ClientToChat.h" />
+    <ClInclude Include="ClientToLogin.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="Contents.h" />
     <ClInclude Include="GameServer.h" />

@@ -13,7 +13,9 @@
 /TestModules/Debug/
 /TestModules/Release/
 /TestModules/TestModules/Debug/
-/TestModules/TestModules/Release/
+/TestModules/TestModules/Release/ 
+/TestModules/TestModules/include
+/TestModules/TestModules/lib
 
 /Core/.vs/
 /Core/x64/

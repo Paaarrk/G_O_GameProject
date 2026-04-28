@@ -271,15 +271,7 @@ namespace Net
 		virtual ~CZoneServer() {}
 
 		bool SetUserPointer(uint64_t sessionId, void* userPtr);
-
-		// // FOR ZONE, 참조없이 refcount체크
-		// bool IsNeedReleasedByZone(uint64 sessionId)
-		// {
-		// 	stZoneSession* pSession = FindSession(sessionId);
-		// 	if (pSession == nullptr)
-		// 		return false;
-		// 	return pSession->IsNeedReleasedByZone();
-		// }
+		
 	private:
 		SOCKET _lsock;
 		uint64_t _sid;
@@ -368,13 +360,6 @@ namespace Net
 		{
 			return _sessionStructure.FindSession(sessionId);
 		}
-
-		
-		// FOR PQCS를 우회
-		// Core::RingBuffer _sendRequests;
-		// HANDLE			 _sendThread;
-		// static unsigned int SendThreadProc(void* param);
-		// public: int32 GetSendRequestsCnt() { return _sendRequests.GetUseSize() / sizeof(Net::stZoneSession*); }
 	};
 
 

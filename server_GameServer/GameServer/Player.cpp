@@ -16,46 +16,67 @@ CPlayer::~CPlayer()
 	free(_wip);
 }
 
+void CPlayer::LoadPlayer(CPlayer& origin) noexcept
+{
+	_playerStatus = origin._befPlayerStatus;
+	_playerType = origin._playerType;
+
+	// TODO
+	// 멀티스레드로 접근하는 일부 자원(db참조카운트 등)은
+	// 반드시 move형태로 옮겨져야한다.
+	_posX = origin._posX;
+	_posY = origin._posY;
+	_rotate = origin._rotate;
+	_tileX = static_cast<int32_t>(_posX) * 2;
+	_tileY = static_cast<int32_t>(_posY) * 2;
+	_hp = origin._hp;
+	_exp = origin._exp;
+	_level = origin._level;
+	_crystal = origin._crystal;
+	wcscpy_s(_nickname, origin._nickname);
+
+	
+}
+
 
 //-----------------------------------------------------------------
 // Player Status
 //-----------------------------------------------------------------
 
-void CPlayer::PlayerWaitLogin(uint64_t sessionId, const std::wstring& wip) noexcept
+void CPlayer::PlayerWaitLogin(unsigned long curtime, uint64_t sessionId, const std::wstring& wip) noexcept
 {
 	_sessionId = sessionId;
 	_accountNo = -1;
 	_playerStatus = PLAYER_WAIT_LOGIN_PACKET;
-	_recvedTime = SteadyClock::now();
 	memcpy(_wip, wip.c_str(), sizeof(wchar_t) * IPV4_LEN);
+	_recvedTime = curtime;
 }
 
-void CPlayer::PlayerWaitRedisCheck(uint64_t accountNo, char(&sessionKey)[SESSION_KEY_LEN], int32_t version) noexcept
+void CPlayer::PlayerWaitRedisCheck(unsigned long curtime, uint64_t accountNo, char(&sessionKey)[SESSION_KEY_LEN], int32_t version) noexcept
 {
 	_accountNo = accountNo;
 	_gameVersion = version;
 	_playerStatus = PLAYER_WAIT_REDIS_CHECKING;
 	memcpy(_sessionKey, sessionKey, SESSION_KEY_LEN);
-	_recvedTime = SteadyClock::now();
+	_recvedTime = curtime;
 }
 
-void CPlayer::PlayerWaitMasterAccept(uint64_t sequence, int32_t gameServerNo, int32_t masterNo) noexcept
+void CPlayer::PlayerWaitDbCheck(unsigned long curtime, uint64_t sessionId) noexcept
 {
-	_sequence = sequence;
-	_gameServerNo = gameServerNo;
-	_chatServerNo = masterNo;
-	_recvedTime = SteadyClock::now();
-	_playerStatus = PLAYER_WAIT_MASTER_ACCEPT;
+	_playerStatus = PLAYER_WAIT_DB_CHECKING;
+	_recvedTime = curtime;
 }
 
-void CPlayer::PlayerLogin() noexcept
+void CPlayer::PlayerWaitLoad(unsigned long curtime) noexcept
 {
-	_playerStatus = PLAYER_LOGIN;
+	_playerStatus = PLAYER_LOGIN_WAIT_LOAD;
+	_recvedTime = curtime;
 }
 
 
-void CPlayer::PlayerLogout() noexcept
+void CPlayer::PlayerLogout(unsigned long curtime) noexcept
 {
 	_playerStatus = PLAYER_LOGOUT;
+	_recvedTime = curtime;
 }
 

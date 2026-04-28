@@ -52,7 +52,7 @@ void Net::stZoneSession::Init(SOCKET _sock, int index, SOCKADDR_IN* caddr, uint6
 {
 	_InterlockedIncrement(&refcount);
 	sock = _sock;
-	sid = ((sid << 20) | index);
+	sid = ((sid << SESSION_TAG_SHIFT) | index);
 	sessionId = sid;
 	zoneId = 0;
 	InetNtopW(AF_INET, &caddr->sin_addr, ip, 16);

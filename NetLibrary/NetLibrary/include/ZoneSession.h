@@ -5,6 +5,10 @@
 #include "RingBufferV4.h"
 
 
+#define SESSION_TAG_BITMASK		0xFFFF'FFFF'FFF0'0000
+#define SESSION_CHECK_TAG		0x0000'0FFF'FFFF'FFFF
+#define SESSION_TAG_SHIFT		20
+
 namespace Net
 {
 	struct stEvent;

@@ -3,6 +3,7 @@
 #include "ZoneServer.h"
 #include "Contents.h"
 #include "RedisConnector.h"
+#include "ClientToLogin.h"
 
 class CGameServer : Net::CZoneServer
 {
@@ -17,6 +18,10 @@ public:
 
 		char	redisIp[IPV4_LEN];
 		int16_t authRedisPort;
+
+		uint8	loginCode;
+		char	loginIp[IPV4_LEN];
+		int16_t loginPort;
 
 		bool LoadOption(const char* path = CONFIG_FILE_PATH);
 	};
@@ -50,9 +55,11 @@ public:
 
 	// 레디스 커넥터
 	static CRedisConnector& GetRedisConnector() { return s_conn_auth; }
+	static CClientToLoginServer& GetLoginServerConntector() { return s_toLoginServerClient; }
 private:
 	uint64_t _lobbyId = 0;
 
+	static CClientToLoginServer s_toLoginServerClient;
 	static CRedisConnector s_conn_auth;
 };
 

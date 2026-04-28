@@ -5,17 +5,32 @@
 #include "Contents.h"
 #include "TLSObjectPool_IntrusiveList.hpp"
 
-//--------------------------------------
-// todo db 관련 변수 추가 및 로직
-//--------------------------------------
+//--------------------------------------------------------------
+// |-----(1)-----|****(2)****|--(3)--|
+// Login         User        Logout
+// 로그인 서버               게임 서버
+//----------------------------------------------------------
 enum EPlayerState
 {
+	// 유저가 오면
+	// 1) 로그인 패킷 기반으로 레디스 세션키 체크
+	// 2) 로그인 도장 찍힌지 확인 대기 상태 
+	// 3) (1)번의 상태이므로 언제든 추방 가능 (로그인 서버가 kick요청 보냈을 때 Logout으로 바꾸면 되서)
+	PLAYER_WAIT,				
 	PLAYER_WAIT_LOGIN_PACKET,	// 로그인 대기 상태
-	PLAYER_WAIT_REDIS_CHECKING, // 레디스 체크
-	PLAYER_WAIT_MASTER_ACCEPT,	// 마스터(채팅서버)의 허락 대기 상태
-	PLAYER_LOGIN,				// 로그인 상태
-	PLAYER_IN_GAME,				// 게임 안에 있는 상태
-	PLAYER_LOGOUT,				// 로그아웃 상태, DB저장 대기 할 수 있음
+	PLAYER_WAIT_REDIS_CHECKING, // 레디스 체크 (세션 키 체크)
+	PLAYER_WAIT_DB_CHECKING,	// 로그인 도장 찍힌지 확인 대기 상태
+	PLAYER_LOGIN,				
+	PLAYER_LOGIN_WAIT_LOAD,		// DB 로드 대기 상태 -> 언제든 잘려도 되는 상태 (아직 (1)번)
+
+	// 여기부터 (2)번 상태
+	PLAYER_IN_GAME,				
+	PLAYER_IN_GAME_SELECT,		// 캐릭터 고르는 상태
+	PLAYER_IN_GAME_ALIVE,		// 게임 안에 살아있는 상태
+	PLAYER_IN_GAME_DEAD,		// 게임 안에 죽은 상태
+	PLAYER_IN_GAME_SIT,			// 게임 안에 앉은 상태
+	
+	PLAYER_LOGOUT,				// 로그아웃 상태, DB저장 대기 할 수 있음, 완료 시 킥 가능
 };
 class CPlayer
 {
@@ -42,20 +57,23 @@ public:
 		return s_playerPool.Free(pPlayer);
 	}
 
-	// 세션 키 확인 및 채팅, 게임서버 번호, 시퀀스 확인
-	void PlayerWaitLogin(uint64_t sessionId, const std::wstring& wip) noexcept;
-	void PlayerWaitRedisCheck(uint64_t accountNo, char(&sessionKey)[SESSION_KEY_LEN], int32_t version) noexcept;
-	// 레디스에서 세션키 확인한 이후의 상태 
-	// 채팅 서버에서 로그인 허용여부 확인 받아야 하는 상태
-	void PlayerWaitMasterAccept(uint64_t sequence, int32_t gameServerNo, int32_t masterNo) noexcept;
-	void PlayerLogin() noexcept;
+	//------------------------------------------------------------
+	// 기존 관리되는 로그아웃된 유저의 메모리를 그대로 가져옵니다
+	//------------------------------------------------------------
+	void LoadPlayer(CPlayer& origin) noexcept;
 
-	void PlayerLogout() noexcept;
-	// void PlayerLogined();
 
-	TimePoint GetLastRecvedTime() const noexcept { return _recvedTime; }
+	void PlayerWaitLogin(unsigned long curtime, uint64_t sessionId, const std::wstring& wip) noexcept;
+	void PlayerWaitRedisCheck(unsigned long curtime, uint64_t accountNo, char(&sessionKey)[SESSION_KEY_LEN], int32_t version) noexcept;
+	void PlayerWaitDbCheck(unsigned long curtime, uint64_t sessionId) noexcept;
+	void PlayerWaitLoad(unsigned long curtime) noexcept;
+	void PlayerLogout(unsigned long curtime) noexcept;
+	
+	unsigned long SetLastRecvedTime(unsigned long time) { _recvedTime = time; }
+	unsigned long GetLastRecvedTime() const noexcept { return _recvedTime; }
 	int64_t GetAccountNo() const noexcept { return _accountNo; }
 	int32_t GetPlayerStatus() const noexcept { return _playerStatus; }
+	int32_t GetBefPlayerStatus() const noexcept { return _befPlayerStatus; }
 	const wchar_t* GetPlayerIp() const noexcept { return _wip; }
 	uint64_t GetSessionId() const noexcept { return _sessionId; }
 private:
@@ -72,7 +90,7 @@ private:
 	int32_t _playerStatus = 0;
 	int32_t _playerType = 0;
 
-	TimePoint _recvedTime = {};
+	unsigned long _recvedTime = 0;
 
 	float _posX = 0.0f;
 	float _posY = 0.0f;
@@ -81,14 +99,15 @@ private:
 	int32_t _tileY = 0;
 
 	int32_t _hp = 0;
-	int32_t _state = 0;
 	uint64_t _exp = 0;
 	int32_t _level = 0;
 	int32_t _crystal = 0;
-	wchar_t _nickname[GMAE_NICKNAME_LEN] = {};
+	wchar_t _nickname[GAME_NICKNAME_LEN] = {};
+
 	wchar_t* _wip;
 	char* _sessionKey;
-	int32_t _dbRequestCnt = 0;
+	uint32_t _dbRequestCnt = 0;
+	int32_t _befPlayerStatus = 0;
 	
 	inline static CTlsObjectPool<CPlayer, POOLKEY_PLAYER, TLS_OBJECTPOOL_USE_CALLONCE> s_playerPool;
 };

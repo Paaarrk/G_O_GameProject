@@ -18,23 +18,27 @@ _lobbyToRedis(sizeof(stAuthRequest) * LOBBY_RINGBUFFER_SIZE),
 _redisToLobby(sizeof(stAuthResponse) * LOBBY_RINGBUFFER_SIZE)
 {
 	_lobbyPlayerMap.reserve(GetMaxUsers());
-
 	_loginAccountNoToSessionIdMap.reserve(GetMaxUsers());
 	_logoutAccountNoToPlayerMap.reserve(GetMaxUsers());
 
 	_redisThread = std::thread(&CLobby::RedisThreadFunc, this);
 }
+
 CLobby::~CLobby()
 {
-	
+	stAuthRequest req;
+	req.ExitSignal();
+	RequestAuthRedis(&req);
+	if (_redisThread.joinable())
+		_redisThread.join();
 }
 
 void CLobby::OnUpdate()
 {
+	unsigned long curTime = GetTickStartTime();
 	// 타임아웃 
 	if (_useTimeout == true)
 	{
-		TimePoint curTime= SteadyClock::now();
 		int64_t deltaTime;
 		for (std::pair<const uint64_t, CPlayer*>& player : _lobbyPlayerMap)
 		{
@@ -42,15 +46,15 @@ void CLobby::OnUpdate()
 			if (deltaTime > TIME_OUT_MS_LOBBY)
 			{
 				Log::logging().Log(TAG_LOBBY, Log::en_SYSTEM, L"[AccountNo: %d] Not Logined, Timeout", player.second->GetAccountNo());
-				player.second->PlayerLogout();
+				player.second->PlayerLogout(GetTickStartTime());
 				CZone::Disconnect(player.first);
 			}
 		}
 	}
 
+	CheckLoginServerResponses();
 	CheckRedisResponses();
-
-	CheckMasterResponses();
+	CheckDBResponses();
 }
 
 void CLobby::OnEnter(uint64_t sessionId, void* playerPtr, std::wstring* ip)
@@ -70,7 +74,7 @@ void CLobby::OnEnter(uint64_t sessionId, void* playerPtr, std::wstring* ip)
 		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[OnEnter()] newPlayer가 nullptr, Alloc()실패");
 		return;
 	}
-	newPlayer->PlayerWaitLogin(sessionId, *ip);
+	newPlayer->PlayerWaitLogin(GetTickStartTime(), sessionId, *ip);
 	auto [it, success] = _lobbyPlayerMap.insert({sessionId, newPlayer});
 	if (success == false)
 	{
@@ -133,7 +137,7 @@ bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t paylo
 	memcpy(&version, &readptr, sizeof(version));
 	readptr += sizeof(version);
 
-	player->PlayerWaitRedisCheck(accountNo, sessionKey64, version);
+	player->PlayerWaitRedisCheck(GetTickStartTime(), accountNo, sessionKey64, version);
 	
 	// Redis 스레드에 요청 보냄
 	char ip[IPV4_LEN];
@@ -148,10 +152,6 @@ bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t paylo
 
 	return true;
 }
-void CLobby::RequestDefault(uint16_t type, const char* readptr, int32_t payloadlen)
-{
-	
-}
 
 
 //------------------------------------------
@@ -163,6 +163,7 @@ bool CLobby::RequestAuthRedis(const stAuthRequest* req)
 	int size = _lobbyToRedis.Enqueue(reinterpret_cast<const char*>(req), sizeof(*req));
 	if (size != sizeof(*req))
 		return false;
+	_signal.exchange(SIGNAL_ON, std::memory_order_seq_cst);
 	return true;
 }
 
@@ -192,34 +193,28 @@ void CLobby::CheckRedisResponses()
 			continue;	//이미 나감
 		if (player->GetPlayerStatus() != PLAYER_WAIT_REDIS_CHECKING)
 		{
-			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"OnUpdate()-RedisCheck : Player Status is not 1 (%d)", player->GetPlayerStatus());
+			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] OnUpdate()-RedisCheck : Player Status is not 1 (%d)", res.sessionId,  player->GetPlayerStatus());
 			Disconnect(res.sessionId);
 			continue;
 		}
 		
 		// 상태 변경
-		player->PlayerWaitMasterAccept(res.sequence, res.gameserverId, res.chatserverId);
-		CPACKET_CREATE(requestAcceptPacket);
-		*requestAcceptPacket << static_cast<uint16_t>(en_PACKET_SS_NEW_USER_REQUEST);
-		*requestAcceptPacket << player->GetSessionId();
-		*requestAcceptPacket << player->GetAccountNo();
-		*requestAcceptPacket << res.sequence;
-		*requestAcceptPacket << res.chatserverId;
-		*requestAcceptPacket << res.gameserverId;
+		player->PlayerWaitDbCheck(GetTickStartTime(), res.sessionId);
+
 
 		// 채팅서버(마스터) 에 요청
-		_toMasterClient.SendPacket(requestAcceptPacket.GetCPacketPtr());
+		s_toLoginServerClient.SendPacket(requestAcceptPacket.GetCPacketPtr());
 	}
 }
 
 
 //--------------------------------------
-// Master (Chat Server)
+// From LoginServer
 //--------------------------------------
 
-void CLobby::CheckMasterResponses()
+void CLobby::CheckLoginServerResponses()
 {
-	Core::CLockFreeQueue<Net::CPacket*>& q = _fromMasterQ;
+	Core::CLockFreeQueue<Net::CPacket*>& q = _fromLoginQ;
 	Net::CPacket* pPacket;
 	while (q.Dequeue_Single(pPacket) == true)
 	{
@@ -239,71 +234,25 @@ void CLobby::CheckMasterResponses()
 	}
 }
 
-void CLobby::ResponseMasterAccept(Net::CPacket* packet)
-{
-	uint64_t sessionId;
-	int64_t accountNo;
-	uint64_t sequence;
-	int8_t success;
-	if (packet->GetDataSize() != SizeOf(sessionId, accountNo, sequence, success))
-	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"ResponseMasterAccept(), 패킷 길이 이상 (me: %d != %d)",
-			packet->GetDataSize(), SizeOf(sessionId, accountNo, sequence, success));
-		// 패킷도 안꺼내서 끊을 수도 없음.
-		return;
-	}
-	*packet >> sessionId;
-	*packet >> accountNo;
-	*packet >> sequence;
-	*packet >> success;
-	
-	if (success == false)
-	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] ResponseMasterAccept(), 로그인 실패함", sessionId);
-		Disconnect(sessionId);
-		return;
-	}
-
-	CPlayer* pPlayer = FindPlayerInLobby(sessionId);
-	if (pPlayer == nullptr)
-	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] ResponseMasterAccept(), 이미 없는 유저", sessionId);
-		return;
-	}
-
-	if (pPlayer->GetPlayerStatus() != EPlayerState::PLAYER_WAIT_MASTER_ACCEPT)
-	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] ResponseMasterAccept(), 상태 이상함 (%d != %d (정상상태))",
-			pPlayer->GetPlayerStatus(), EPlayerState::PLAYER_WAIT_MASTER_ACCEPT);
-		Disconnect(sessionId);
-		return;
-	}
-
-	uint64_t retId = ExchangeLoginSession(accountNo, sessionId);
-	if (retId == 0)
-	{	
-		// 한번 잔여 메모리 확인 후 없으면 db읽음
-		// 있으면 그냥 사용
-	}
-	else
-	{
-		// 곧 반환 될 메모리 기다림
-	}
-}	
-
 //--------------------------------------
 // Redis Thread
 //--------------------------------------
 
 void CLobby::RedisThreadFunc()
 {
+	bool fin = false;
 	stAuthRequest req;
-	while (1)
+	while (fin == false)
 	{
 		_signal.wait(SIGNAL_OFF, std::memory_order_seq_cst);
 		// 링버퍼 로직
 		while (_lobbyToRedis.Dequeue(reinterpret_cast<char*>(&req), sizeof(req)) == sizeof(req))
 		{
+			if (req.sessionId == 0)
+			{
+				fin = true;
+				break;
+			}
 			ProcessRedis(req);
 		}
 
@@ -311,6 +260,11 @@ void CLobby::RedisThreadFunc()
 		// (넣고 1로 바꿈) -> 내가 0으로 바꿈 (큐에는 1개 남고) 이런 상황 방지
 		while (_lobbyToRedis.Dequeue(reinterpret_cast<char*>(&req), sizeof(req)) == sizeof(req))
 		{
+			if (req.sessionId == 0)
+			{
+				fin = true;
+				break;
+			}
 			ProcessRedis(req);
 		}
 	}
