@@ -1,3 +1,9 @@
+
+/TestModules/TestModules/SYSLOG/
+/TestModules/TestModules/libmysql.dll
+/server_GameServer/GameServer/libmysql.dll
+
+
 /server_GameServer/.vs
 /server_GameServer/x64/Config
 /server_GameServer/x64

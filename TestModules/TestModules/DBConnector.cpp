@@ -1,5 +1,8 @@
 #include "DBConnector.h"
 
+#include <time.h>
+#pragma comment(lib, "winmm")
+
 #include "logclassV1.h"
 using Log = Core::c_syslog;
 
@@ -256,4 +259,5 @@ void CTlsMySqlConnector::WriteSlowQuery(bool useTiming)
 		}
 	}
 }
+
 

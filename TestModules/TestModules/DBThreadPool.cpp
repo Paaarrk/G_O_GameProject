@@ -5,14 +5,18 @@ using Log = Core::c_syslog;
 
 CDBReadThreadPool CDBReadThreadPool::s_pool;
 
-CDBReadThreadPool::CDBReadThreadPool() :_isInit(false), _iocp(NULL), _threads{}, _createThreadNum(0)
+CTlsObjectPool<stBlock, 0x00482233, TLS_OBJECTPOOL_USE_RAW> CDBReadThreadPool::s_objects;
+
+CDBReadThreadPool::CDBReadThreadPool() :
+	_isInit(false), _iocp(NULL), _threads{}, _createThreadNum(0), _exitThreadNum(0),
+	_requestNum(0)
 {
 
 }
 
 CDBReadThreadPool::~CDBReadThreadPool()
 {
-
+	Rollback();
 }
 
 CTlsMySqlConnector& CDBReadThreadPool::GetConn()
@@ -23,6 +27,7 @@ CTlsMySqlConnector& CDBReadThreadPool::GetConn()
 	}
 	Log::logging().Log(TAG_DB, Log::en_ERROR, L"CDBReadThreadPool::GetConn(), Init 호출 안함");
 	__debugbreak();
+	return s_pool._conn;
 }
 
 bool CDBReadThreadPool::Init(const char* hostIP, const char* id, const char* pw,
@@ -43,12 +48,24 @@ bool CDBReadThreadPool::Init(const char* hostIP, const char* id, const char* pw,
 			break;
 		}
 
+		for (int i = 0; i < CREATE; i++)
+		{
+			s_pool._threads[i] = (HANDLE)_beginthreadex(NULL, NULL, CDBReadThreadPool::WorkerProc, NULL, 0, NULL);
+			if (s_pool._threads[i] == NULL)
+			{
+				Log::logging().Log(TAG_DB, Log::en_ERROR, L"Init(), Create WorkerThread failed");
+				break;
+			}
+			else s_pool._createThreadNum++;
+		}
 
+		s_pool._isInit = true;
+		return true;
 	}while(0);
 
 
-
-	return true;
+	Rollback();
+	return false;
 }
 
 void CDBReadThreadPool::Rollback()
@@ -57,7 +74,10 @@ void CDBReadThreadPool::Rollback()
 	{
 		PostQueuedCompletionStatus(s_pool._iocp, EXIT_SIGNAL, 0, nullptr);
 	}
-	Sleep(100);
+
+	while (s_pool._exitThreadNum != s_pool._createThreadNum) 
+		_mm_pause();
+
 	for (int i = 0; i < CREATE; i++)
 	{
 		if (s_pool._threads[i] != 0)
@@ -83,18 +103,26 @@ unsigned int CDBReadThreadPool::WorkerProc(void* param)
 	while (1)
 	{
 		DWORD message = 0;
-
-		// GetQueuedCompletionStatus(iocp, &message, )
+		const wchar_t* query = nullptr;
+		OVERLAPPED* ol;
+		GetQueuedCompletionStatus(iocp, &message, (ULONG_PTR*)&query, &ol, INFINITE);
 		if (message == EXIT_SIGNAL)
 		{
 			break;
 		}
 
-
+		
 		
 	}
 
-
+	_InterlockedIncrement((volatile long*)&s_pool._exitThreadNum);
 	Log::logging().Log(TAG_DB, Log::en_SYSTEM, L"DB Read Thread End");
 	return 0;
+}
+
+void CDBReadThreadPool::RequestQuery(ULONG_PTR req)
+{
+	PostQueuedCompletionStatus(s_pool._iocp, CDBReadThreadPool::endb::REQUEST_QUERY,
+		(ULONG_PTR)req, nullptr);
+	_InterlockedIncrement(&s_pool._requestNum);
 }
