@@ -60,6 +60,7 @@ enum EDB_LOG_CODE
 constexpr const char* NAME_LOGIN = "Login";
 constexpr const char* NAME_GAME = "Game";
 
+
 struct DBBlock
 {
 	enum EBLOCK

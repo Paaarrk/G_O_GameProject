@@ -5,7 +5,7 @@ std::vector<std::string> CDBRequest::Sync_GetWhiteIpList()
 {
 	std::vector<std::string> ret;
 
-	CTlsMySqlConnector<LOCAL_DB>& conn = CTlsMySqlConnector<LOCAL_DB>::GetConnector();
+	CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
 	if (conn.RequestQuery(L"SELECT `ip` FROM `accountdb`.`whiteip`"))
 	{
 		
@@ -27,7 +27,7 @@ std::vector<std::pair<int, int>> CDBRequest::Sync_GetCrystalData()
 {
 	std::vector<std::pair<int, int>> ret;
 
-	CTlsMySqlConnector<LOCAL_DB>& conn = CTlsMySqlConnector<LOCAL_DB>::GetConnector();
+	CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
 	if (conn.RequestQuery(L"SELECT * FROM `gamedb`.`data_cristal`"))
 	{
 		
@@ -51,7 +51,7 @@ std::vector<std::tuple<int, int, int>> CDBRequest::Sync_GetPlayerBaseData()
 {
 	std::vector<std::tuple<int, int, int>> ret;
 
-	CTlsMySqlConnector<LOCAL_DB>& conn = CTlsMySqlConnector<LOCAL_DB>::GetConnector();
+	CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
 	if (conn.RequestQuery(L"SELECT * FROM `gamedb`.`data_player`"))
 	{
 		
@@ -75,7 +75,7 @@ std::vector<std::tuple<int, int, int>> CDBRequest::Sync_GetMonsterBaseData()
 {
 	std::vector<std::tuple<int, int, int>> ret;
 
-	CTlsMySqlConnector<LOCAL_DB>& conn = CTlsMySqlConnector<LOCAL_DB>::GetConnector();
+	CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
 	if (conn.RequestQuery(L"SELECT * FROM `gamedb`.`data_monster`"))
 	{
 		

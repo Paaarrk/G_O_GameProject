@@ -1,10 +1,13 @@
 #include "DBRequest.h"
 #include "DBThreadPool.h"
+#include "DBWriter.h"
 
 int main()
 {
 	mysql_library_init(0, NULL, NULL);
 	
+
+	CDBWriterThread writer;
 
 	std::vector<std::string> v = CDBRequest::Sync_GetWhiteIpList();
 	std::vector<std::pair<int, int>> v2 = CDBRequest::Sync_GetCrystalData();
@@ -85,6 +88,27 @@ int main()
 	requestNum = CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().GetRequestNum();
 	queuesize = CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().GetQueueSize<POOL_USE_LOBBY>();
 	printf("requestNum: %d, queuesize: %d \n", requestNum, queuesize);
+
+
+	IDBWriterRequest* wreq = new CAsync_WriteRequest(L"INSERT INTO `gamedb`.`character` values (%lld, %d, %f, %f, %d, %d, %d, %d, %d, %lld, %d, %d)", [](int ret) {
+		printf("Reqeust fin!!\n"); }, (int64_t)102, 2, 4.0f, 4.0f, 0, 0, 125, 200, 19, (int64_t)0, 999, 0);
+	//writer.Request(wreq);
+
+	// const wchar_t* login = L"Login";
+	FixedWString string(L"Login");
+
+	wreq = new CAsync_WriteRequest(L"INSERT INTO `logdb`.`gamelog_template` (accountno, servername, type, code, param1) values(%lld, '%s', %d, %d, %d)",
+		[](int ret) {printf("Request fin!!: %d \n", ret); }, (int64_t)2345, std::move(string), 100, 101,  1);
+	//writer.Request(wreq);
+
+	FixedWString stringgame(L"Game");
+	wreq = new CAsync_WriteRequest(L"BEGIN; \
+UPDATE `gamedb`.`character` SET `cristal` = %d WHERE `accountno` = %lld ; \
+INSERT INTO `logdb`.`gamelog_template` (accountno, servername, type, code, param1, param2) \
+SELECT %lld, '%s', %d, %d, %d, %d FROM DUAL WHERE ROW_COUNT() > 0 ; SELECT ROW_COUNT(); COMMIT;",
+		[](int ret) {printf("Request fin!!: %d \n", ret); }, 40, (int64_t)101,
+		(int64_t)100, std::move(stringgame), 4, 41, 30, 40);
+	writer.Request(wreq);
 
 	return 0;
 }

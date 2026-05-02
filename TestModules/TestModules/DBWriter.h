@@ -15,7 +15,10 @@ class CDBWriterThread
 	};
 public:
 	CDBWriterThread();
+	~CDBWriterThread();
+	void Exit();
 	void WriterProc();
+	void Request(IDBWriterRequest* req);
 
 	int32_t GetRequestNum() const { return _reqQ.GetSize(); }
 private:
@@ -24,17 +27,18 @@ private:
 	CDBWriterThread& operator=(const CDBWriterThread&) = delete;
 	std::thread _thread;
 	std::atomic<bool> _wakeflag;
+	std::atomic<bool> _isRunning;
 	Core::CLockFreeQueue<IDBWriterRequest*> _reqQ;
 };
+
 
 
 class IDBWriterRequest
 {
 public:
-	IDBWriterRequest(uint64_t sessionId, const wchar_t* query)
-		:_sessionId(sessionId), _query(query){ }
-	
-	virtual ~IDBWriterRequest(){ }
+	IDBWriterRequest() {}
+
+	virtual ~IDBWriterRequest() {}
 	virtual void WriteProcess() = 0;
 
 	void* operator new(size_t size)
@@ -47,8 +51,6 @@ public:
 		if (ret)
 			__debugbreak();
 	}
-protected:
+private:
 };
-
-
 #endif

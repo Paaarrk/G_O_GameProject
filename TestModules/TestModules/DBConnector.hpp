@@ -42,12 +42,6 @@ public:
 			free(_schema);
 	}
 
-	static CTlsMySqlConnector& GetConnector()
-	{
-		static CTlsMySqlConnector connector;
-		return connector;
-	}
-
 	void SetConnector(const char* hostIP, const char* id, const char* pw,
 		const char* schema, unsigned short port)
 	{
@@ -130,7 +124,6 @@ public:
 	}
 
 	//---------------------------------------
-	// 쿼리 날리기, 단일 쿼리 전용
 	// 멀티쿼리라면 사용자가 직접 조립하고주는게 맞지않나?
 	// 성공시 0, 실패시 0아님
 	// 실패 1: DB서버문제
@@ -183,31 +176,6 @@ public:
 		}
 
 		unsigned int err = mysql_errno(&pConn->_conn);
-		if (err == CR_SERVER_GONE_ERROR || err == CR_SERVER_LOST)
-		{
-			int ret = Connect();
-			if (ret != 0)
-			{
-				LogSQLError();
-				return 1;
-			}
-
-			startTime = timeGetTime();
-			if (mysql_query(&pConn->_conn, pConn->_curAQuery) == 0)
-			{
-				endTime = timeGetTime();
-				deltaTime = (endTime - startTime);
-				pConn->_avgTime = (pConn->_avgTime * pConn->_count + deltaTime) / (pConn->_count + 1);
-				if (deltaTime > pConn->_maxDeltaTime)
-					pConn->_maxDeltaTime = deltaTime;
-				RegisterSlowQuery(pConn->_curWQuery, deltaTime);
-				++pConn->_count;
-				return 0;
-			}
-
-			err = mysql_errno(&pConn->_conn);
-		}
-
 		LogSQLError();
 		if (err == CR_SERVER_GONE_ERROR || err == CR_SERVER_LOST)
 			return 1;
@@ -216,6 +184,13 @@ public:
 		return 2;
 	}
 
+	unsigned int GetErrno() const
+	{ 
+		stConn* pConn = tls_conn;
+		if (pConn == nullptr)
+			return 0;
+		return mysql_errno(&pConn->_conn); 
+	}
 
 	//---------------------------------------
 	// 응답 가져오기 / FreeResult()필수
@@ -248,6 +223,23 @@ public:
 		}
 		else
 			return nullptr;
+	}
+
+	long long MySqlAffectedRows()
+	{
+		stConn* pConn = tls_conn;
+		if (pConn == nullptr)
+		{
+			return -1;
+		}
+		return mysql_affected_rows(&pConn->_conn);
+	}
+
+	int MySqlNextResult() const
+	{
+		stConn* pConn = tls_conn;
+		if (pConn == nullptr) return -1;
+		return mysql_next_result(&pConn->_conn);
 	}
 
 	//---------------------------------------
@@ -376,8 +368,8 @@ public:
 		wchar_t _curWQuery[QUERY_SIZE] = {};
 		char _curAQuery[QUERY_SIZE * 4] = {};	//최대 2바이트가 4바이트로 바뀌어서
 	};
-private:
 	CTlsMySqlConnector() {}
+private:
 	CTlsMySqlConnector(const CTlsMySqlConnector&) = delete;
 	CTlsMySqlConnector& operator=(const CTlsMySqlConnector&) = delete;
 
@@ -389,5 +381,13 @@ private:
 	inline static thread_local stConn* tls_conn;
 };
 
+template <EPhysicalInstance instance>
+inline static CTlsMySqlConnector<instance> g_connector;
+
+template <EPhysicalInstance instance>
+static CTlsMySqlConnector<instance>& GetConnector()
+{
+	return g_connector<instance>;
+}
 
 #endif
