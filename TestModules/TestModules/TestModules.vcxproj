@@ -134,14 +134,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DBRequest.cpp" />
-    <ClCompile Include="DBThreadPool.cpp" />
-    <ClCompile Include="DBConnector.cpp" />
+    <ClCompile Include="DBWriter.cpp" />
     <ClCompile Include="test_dbmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DBProtocol.h" />
     <ClInclude Include="DBRequest.h" />
     <ClInclude Include="DBThreadPool.h" />
-    <ClInclude Include="DBConnector.h" />
+    <ClInclude Include="DBConnector.hpp" />
+    <ClInclude Include="DBWriter.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core\Core.vcxproj">

@@ -15,27 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DBConnector.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="DBThreadPool.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="DBRequest.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="test_dbmain.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="DBWriter.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DBConnector.h">
+    <ClInclude Include="DBConnector.hpp">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DBThreadPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DBRequest.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DBProtocol.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DBWriter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
