@@ -25,7 +25,8 @@ enum EPlayerState
 
 	// 여기부터 (2)번 상태
 	PLAYER_IN_GAME,				
-	PLAYER_IN_GAME_SELECT,		// 캐릭터 고르는 상태
+	PLAYER_IN_GAME_SELECT,		// 캐릭터 고르는 상태 (메모리 안남음)
+
 	PLAYER_IN_GAME_ALIVE,		// 게임 안에 살아있는 상태
 	PLAYER_IN_GAME_DEAD,		// 게임 안에 죽은 상태
 	PLAYER_IN_GAME_SIT,			// 게임 안에 앉은 상태
@@ -57,18 +58,27 @@ public:
 		return s_playerPool.Free(pPlayer);
 	}
 
-	//------------------------------------------------------------
 	// 기존 관리되는 로그아웃된 유저의 메모리를 그대로 가져옵니다
-	//------------------------------------------------------------
 	void LoadPlayer(CPlayer& origin) noexcept;
-
+	void LoadPlayer(const GetCharacterInfoResType& dbload) noexcept;
+	void MakeMemoryStatus(unsigned long curtime) noexcept {
+		_befPlayerStatus = _playerStatus; 
+		_playerStatus = PLAYER_LOGOUT;
+		_recvedTime = curtime;
+	}
 
 	void PlayerWaitLogin(unsigned long curtime, uint64_t sessionId, const std::wstring& wip) noexcept;
 	void PlayerWaitRedisCheck(unsigned long curtime, uint64_t accountNo, char(&sessionKey)[SESSION_KEY_LEN], int32_t version) noexcept;
 	void PlayerWaitDbCheck(unsigned long curtime, uint64_t sessionId) noexcept;
 	void PlayerWaitLoad(unsigned long curtime) noexcept;
-	void PlayerLogout(unsigned long curtime) noexcept;
+	void PlayerInGameSelect(unsigned long curtime) noexcept;
 	
+	void PlayerLogout(unsigned long curtime) noexcept;
+
+	void SetPlayerName(const stName& name)
+	{
+		MultiByteToWideChar(CP_UTF8, 0, name.name, -1, _nickname, GAME_NICKNAME_LEN);
+	}
 	unsigned long SetLastRecvedTime(unsigned long time) { _recvedTime = time; }
 	unsigned long GetLastRecvedTime() const noexcept { return _recvedTime; }
 	int64_t GetAccountNo() const noexcept { return _accountNo; }

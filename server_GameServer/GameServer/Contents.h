@@ -61,3 +61,56 @@ enum en_CONTENTS
 
 	LOBBY_RINGBUFFER_SIZE = 5000,
 };
+
+
+
+struct stName
+{
+#pragma warning(push)
+#pragma warning(disable : 26495) // 초기화 일부러 안함
+	stName() { name[0] = '\0'; }
+#pragma warning(pop)	
+	stName(const char* p)
+	{
+		strcpy_s(name, GAME_NICKNAME_LEN, p);
+	}
+	char name[GAME_NICKNAME_LEN];
+};
+
+
+template<size_t size>
+struct FixedWString
+{
+	FixedWString() { data[0] = L'\0'; }
+	FixedWString(const wchar_t* wstr)
+	{
+		if (wstr) wcsncpy_s(data, size, wstr, _TRUNCATE);
+		else data[0] = L'\0';
+	}
+	FixedWString(const FixedWString& ref) = default;
+	FixedWString(FixedWString&& ref) noexcept = default;
+
+	wchar_t data[size];
+};
+template<size_t size>
+FixedWString(const wchar_t(&)[size]) -> FixedWString<size>;
+
+
+template <typename T>
+decltype(auto) ToRaw(T&& args)
+{
+	using RawType = std::decay_t<T>;
+
+	if constexpr (requires { RawType::data; } || requires { args.data; }) {
+		return (const wchar_t*)args.data;
+	}
+	else {
+		return std::forward<T>(args);
+	}
+}
+
+
+// | int64_t accoutno | char[20] userid | char[20] usernick | int32_t status |
+using GetAccountInfoResType = std::tuple<int64_t, stName, stName, int32_t>;
+// | int64_t accoutno | int32_t charactertype | float posx | float posy | int32_t tilex | int32_t tiley | int32_t rotation | int32_t cristal | int32_t hp | int64_t exp | int32_t level | int32_t die |
+using GetCharacterInfoResType = std::tuple <int64_t, int32_t, float, float, int32_t, int32_t, int32_t, int32_t, int32_t, int64_t, int32_t, int32_t>;

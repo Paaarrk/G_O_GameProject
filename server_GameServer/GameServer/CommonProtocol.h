@@ -739,10 +739,15 @@ enum en_PACKET_TYPE
 	//		WORD	Type
 	//
 	//		INT64	AccountNo
-	//		CHAR	SessionKey[64]
-	//		INT64	Parameter
+	//		// CHAR	SessionKey[64] -> 레디스 있잖아
+	//		UINT64	Parameter
 	//	}
 	//
+	// ** 내 규칙 ** 
+	// 로그인 서버는 Login상태이든 Logout상태이든 일단 보내기
+	// - 받은 서버는 확인 후 로그인중이면 킥해서 받을 준비하고 답
+	// 일단 로그인 서버는 Login상태면 무조건 끊는 것으로 갑시다
+	// (이 패킷은 킥 요청이자 로그아웃 상태를 만들어달라는 요청)
 	//------------------------------------------------------------
 	en_PACKET_SS_REQ_NEW_CLIENT_LOGIN,
 
@@ -763,7 +768,7 @@ enum en_PACKET_TYPE
 	//		WORD	Type
 	//
 	//		INT64	AccountNo
-	//		INT64	Parameter
+	//		UINT64	Parameter
 	//	}
 	//
 	//------------------------------------------------------------

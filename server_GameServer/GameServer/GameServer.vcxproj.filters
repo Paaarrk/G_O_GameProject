@@ -84,6 +84,12 @@
     <ClCompile Include="RedisConnector.cpp">
       <Filter>소스 파일\DB</Filter>
     </ClCompile>
+    <ClCompile Include="DBRequest.cpp">
+      <Filter>소스 파일\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="DBWriter.cpp">
+      <Filter>소스 파일\DB</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameServer.h">
@@ -112,6 +118,21 @@
     </ClInclude>
     <ClInclude Include="ClientToLogin.h">
       <Filter>헤더 파일\Client</Filter>
+    </ClInclude>
+    <ClInclude Include="DBConnector.hpp">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DBProtocol.h">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DBRequest.h">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DBThreadPool.h">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DBWriter.h">
+      <Filter>헤더 파일\DB</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

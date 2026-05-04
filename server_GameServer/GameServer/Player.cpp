@@ -34,8 +34,23 @@ void CPlayer::LoadPlayer(CPlayer& origin) noexcept
 	_level = origin._level;
 	_crystal = origin._crystal;
 	wcscpy_s(_nickname, origin._nickname);
+}
 
-	
+void CPlayer::LoadPlayer(const GetCharacterInfoResType& dbload) noexcept
+{
+	const auto& [accountno, charactertype, posx, posy, tilex, tiley, rotation, cristal, hp, exp, level, die] = dbload;
+	_playerType = charactertype;
+	_posX = posx;
+	_posY = posy;
+	_tileX = tilex;
+	_tileY = tiley;
+	_rotate = rotation;
+	_crystal = cristal;
+	_hp = hp;
+	_exp = exp;
+	_level = level;
+	if (die) _playerStatus = PLAYER_IN_GAME_DEAD;
+	else _playerStatus = PLAYER_IN_GAME_ALIVE;
 }
 
 
@@ -70,6 +85,12 @@ void CPlayer::PlayerWaitDbCheck(unsigned long curtime, uint64_t sessionId) noexc
 void CPlayer::PlayerWaitLoad(unsigned long curtime) noexcept
 {
 	_playerStatus = PLAYER_LOGIN_WAIT_LOAD;
+	_recvedTime = curtime;
+}
+
+void CPlayer::PlayerInGameSelect(unsigned long curtime) noexcept
+{
+	_playerStatus = PLAYER_IN_GAME_SELECT;
 	_recvedTime = curtime;
 }
 

@@ -2,6 +2,7 @@
 /TestModules/TestModules/SYSLOG/
 /TestModules/TestModules/libmysql.dll
 /server_GameServer/GameServer/libmysql.dll
+/server_GameServer/GameServer/SYSLOG
 
 
 /server_GameServer/.vs

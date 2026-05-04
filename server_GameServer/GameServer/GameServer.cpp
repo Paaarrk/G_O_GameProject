@@ -2,6 +2,8 @@
 #include "Contents.h"
 #include "21_TextParser.h"
 
+#include "DBConnector.hpp"
+
 #include "logclassV1.h"
 using Log = Core::c_syslog;
 
@@ -107,9 +109,13 @@ bool CGameServer::OnInit(const Net::CZoneServer::stServerOpt* pOpt)
 	clientopt.client_code = opt.loginCode;
 	clientopt.iWorkerThreadCreateCnt = 1;
 	clientopt.iWorkerThreadRunCnt = 1;
-	memcpy(clientopt.targetIP, opt.loginIp, IPV4_LEN * sizeof(wchar_t));
+	memcpy(clientopt.targetIP, opt.loginIp, IPV4_LEN);
 	clientopt.targetPort = opt.loginPort;
+
+	// DB √ ±‚»≠
+	GetConnector<LOCAL_DB>().SetConnector(opt.mysqlIp, opt.mysql_id, opt.mysql_pw, nullptr, opt.mysqlPort);
 	
+
 	if (CGameServer::s_toLoginServerClient.Init(&clientopt) == false)
 		return false;
 	

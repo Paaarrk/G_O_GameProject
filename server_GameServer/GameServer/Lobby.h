@@ -9,7 +9,10 @@
 #include "LockFreeQueue.hpp"
 #include "Contents.h"
 
+#include "DBThreadPool.h"
+
 class CPlayer;
+class CGameServer;
 
 struct stAuthRequest
 {
@@ -52,6 +55,8 @@ public:
 			return nullptr;
 		return it->second;
 	}
+
+	// 0 리턴시 게임중X, 세션아이디 리턴시 게임중
 	uint64_t FindLoginSession(int64_t accountNo) const
 	{
 		auto it = _loginAccountNoToSessionIdMap.find(accountNo);
@@ -60,16 +65,20 @@ public:
 		return it->second;
 	}
 
-	// 내부에서 지우고 그 포인터를 돌려줌 (사용 후 풀에 반환 필요)
-	CPlayer* GetLogoutPlayerMemory(int64_t accountNo)
+	bool InsertPlayerSession(int64_t accountNo, uint64_t sessionId)
 	{
-		auto it = _logoutAccountNoToPlayerMap.find(accountNo);
-		if (it == _logoutAccountNoToPlayerMap.end())
-			return nullptr;
-		CPlayer* ret = it->second;
-		_logoutAccountNoToPlayerMap.erase(it);
-		return ret;
+		auto [it, success] = _loginAccountNoToSessionIdMap.insert({ accountNo, sessionId });
+		return success;
 	}
+	
+	//---------------------------------------------------------
+	// Player Load and Mem
+	//---------------------------------------------------------
+
+	void PlayerLoad(CPlayer* player);
+	void PlayerDelayLoad(CPlayer* player);
+	// 내부에서 지우고 그 포인터를 돌려줌 (사용 후 풀에 반환 필요)
+	CPlayer* GetLogoutPlayerMemory(int64_t accountNo);
 
 	//---------------------------------------------------------
 	// Event Functions
@@ -80,7 +89,11 @@ public:
 	virtual void OnLeave(uint64_t sessionId, bool bNeedPlayerDelete);
 	virtual void OnMessage(uint64_t sessionId, const char* readPtr, int payloadlen);
 
+	//---------------------------------------------------------
+	// Get
+	//---------------------------------------------------------
 
+	CGameServer* GetMyServer() const;
 private:
 	uint16_t CheckType(const char*& readPtr, int32_t& len) noexcept
 	{
@@ -103,8 +116,9 @@ private:
 	//----------------------------------
 	// From Login Server
 	//----------------------------------
-	// 로그인 서버 큐 비우기
 	void CheckLoginServerResponses();
+	void RequestNewClientLogin(Net::CPacket* packet);
+	
 
 	//----------------------------------
 	// Redis
@@ -149,6 +163,8 @@ private:
 	std::atomic<int32_t> _signal;
 
 	Core::CLockFreeQueue<Net::CPacket*> _fromLoginQ;
+	
+	CDBThreadPool<POOL_USE_COUNT>& _staticDBReadPool;
 };
 
 

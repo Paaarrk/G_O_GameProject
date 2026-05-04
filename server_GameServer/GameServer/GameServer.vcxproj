@@ -114,6 +114,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,11 +133,14 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="21_TextParser.cpp" />
     <ClCompile Include="ClientToLogin.cpp" />
+    <ClCompile Include="DBRequest.cpp" />
+    <ClCompile Include="DBWriter.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="Lobby.cpp" />
     <ClCompile Include="LobbyTimerJob.cpp" />
@@ -157,6 +161,11 @@
     <ClInclude Include="ClientToLogin.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="Contents.h" />
+    <ClInclude Include="DBConnector.hpp" />
+    <ClInclude Include="DBProtocol.h" />
+    <ClInclude Include="DBRequest.h" />
+    <ClInclude Include="DBThreadPool.h" />
+    <ClInclude Include="DBWriter.h" />
     <ClInclude Include="GameServer.h" />
     <ClInclude Include="Lobby.h" />
     <ClInclude Include="LobbyTimerJob.h" />

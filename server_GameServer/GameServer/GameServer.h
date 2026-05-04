@@ -2,6 +2,8 @@
 #define __GAME_SERVER_H__
 #include "ZoneServer.h"
 #include "Contents.h"
+
+#include "DBProtocol.h"
 #include "RedisConnector.h"
 #include "ClientToLogin.h"
 
@@ -18,6 +20,11 @@ public:
 
 		char	redisIp[IPV4_LEN];
 		int16_t authRedisPort;
+
+		char	mysqlIp[IPV4_LEN];
+		int16_t	mysqlPort;
+		char	mysql_id[EMysqlConfig::ID_LEN];
+		char	mysql_pw[EMysqlConfig::PW_LEN];
 
 		uint8	loginCode;
 		char	loginIp[IPV4_LEN];
@@ -56,8 +63,17 @@ public:
 	// 레디스 커넥터
 	static CRedisConnector& GetRedisConnector() { return s_conn_auth; }
 	static CClientToLoginServer& GetLoginServerConntector() { return s_toLoginServerClient; }
+
+	// 로그인 서버
+	static CClientToLoginServer& GetLoginServerConnection() { return s_toLoginServerClient; }
+
+	uint64_t GetLobbyId() const noexcept { return _lobbyId; }
+	uint64_t GetCharacterSelectId() const noexcept { return _characterSelectId; }
+	uint64_t GetInGameId() const noexcept { return _inGameId; }
 private:
 	uint64_t _lobbyId = 0;
+	uint64_t _characterSelectId = 0;
+	uint64_t _inGameId = 0;
 
 	static CClientToLoginServer s_toLoginServerClient;
 	static CRedisConnector s_conn_auth;
