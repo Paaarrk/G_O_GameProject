@@ -105,9 +105,9 @@ int main()
 	wreq = new CAsync_WriteRequest(L"BEGIN; \
 UPDATE `gamedb`.`character` SET `cristal` = %d WHERE `accountno` = %lld ; \
 INSERT INTO `logdb`.`gamelog_template` (accountno, servername, type, code, param1, param2) \
-SELECT %lld, '%s', %d, %d, %d, %d FROM DUAL WHERE ROW_COUNT() > 0 ; SELECT ROW_COUNT(); COMMIT;",
-		[](int ret) {printf("Request fin!!: %d \n", ret); }, 40, (int64_t)101,
-		(int64_t)100, std::move(stringgame), 4, 41, 30, 40);
+SELECT %lld, '%s', %d, %d, %d, %d FROM DUAL WHERE ROW_COUNT() = 1 ; SELECT ROW_COUNT(); COMMIT;",
+		[](int ret) {printf("Request fin!!: %d \n", ret); }, 100, (int64_t)101,
+		(int64_t)100, std::move(stringgame), 4, 41, 70, 100);
 	writer.Request(wreq);
 
 	return 0;

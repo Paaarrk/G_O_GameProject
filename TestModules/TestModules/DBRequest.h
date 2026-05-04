@@ -60,7 +60,7 @@ using GetCharacterInfoResType = std::tuple <int64_t, int32_t, float, float, int3
 
 
 //-----------------------------------------------------
-// READ
+// READ : Pool (Get Response)
 //-----------------------------------------------------
 
 template <typename F>
@@ -164,8 +164,11 @@ private:
 };
 
 
+
+
+
 //-----------------------------------------------------
-// WRITE
+// WRITE Thread
 //-----------------------------------------------------
 
 template<size_t size>
