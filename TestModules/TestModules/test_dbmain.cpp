@@ -6,8 +6,6 @@ int main()
 {
 	mysql_library_init(0, NULL, NULL);
 	
-	GetConnector<EPhysicalInstance::LOCAL_DB>().SetConnector(
-		"127.0.0.1", "root", "kato0923!!", nullptr, 3306);
 	CDBWriterThread writer;
 
 	std::vector<std::string> v = CDBRequest::Sync_GetWhiteIpList();
