@@ -311,9 +311,9 @@ namespace Core
 		~CLockFreeQueue()
 		{
 			Clear();
-			s_nodePool.Free(LockfreeQueue_RemoveCounter(_head));
-			_head = nullptr;
-			_tail = nullptr;
+			//s_nodePool.Free(LockfreeQueue_RemoveCounter(_head));
+			//_head = nullptr;
+			//_tail = nullptr;
 		}
 		//----------------------------------------------------------------
 		// 积己茄 没农 荐

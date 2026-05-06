@@ -90,11 +90,11 @@ Net::CZoneServer::SessionStructure::~SessionStructure()
 bool Net::CZoneServer::SessionStructure::Init(int maxCnt)
 {
 	_maxSessionCnt = maxCnt;
-	_sessionsArray = new Net::stZoneSession[maxCnt];
+	_sessionsArray = new Net::stZoneSession[maxCnt + 1];
 	if (_sessionsArray == nullptr)
 		return false;
 
-	for (int i = maxCnt - 1; i >= 0; i--)
+	for (int i = maxCnt; i > 0; i--)
 	{
 		_indexStack.push(i);
 	}
@@ -830,7 +830,8 @@ Net::stZoneSession* Net::CZoneServer::InitNewSession(SOCKET newSocket, SOCKADDR_
 		Core::c_syslog::logging().Log(TAG_NET, Core::c_syslog::en_ERROR, L"세션이 부족한데 이상하네(GetSession() 실패)");
 		return nullptr;
 	}
-
+	
+	// index가 1 ~ maxcnt (배열크기가 maxcnt + 1) 이라서 sessionId 0은 안나옴
 	pNewSession->Init(newSocket, index, caddr, _InterlockedIncrement(&_sid));
 	return pNewSession;
 }
@@ -868,7 +869,7 @@ void Net::CZoneServer::Init_Rollback()
 			{
 				Core::c_syslog::logging().LogEx(TAG_NET, GetLastError(), Core::c_syslog::en_ERROR, L"Netlib::Init_Rollback() = 스레드 close 오류");
 			}
-			_hThreads[i] = 0;
+			_hThreads[i] = NULL;
 		}
 	}
 
@@ -876,11 +877,13 @@ void Net::CZoneServer::Init_Rollback()
 	if (_hEventForAccept != NULL)
 	{
 		CloseHandle(_hEventForAccept);
+		_hEventForAccept = NULL;
 	}
 
 	if (_hEventForExit != NULL)
 	{
 		CloseHandle(_hEventForExit);
+		_hEventForExit = NULL;
 	}
 
 	ExitMonitoringJob();

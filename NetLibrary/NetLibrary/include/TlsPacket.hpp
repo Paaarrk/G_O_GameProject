@@ -131,6 +131,16 @@ namespace Net
 			m_buffersize = eBUFFER_DEFAULT - CPACKET_HEADER_LEN;
 		}
 
+		// type 포인터 위치 반환
+		char* ReuseSSProtocol(int size)
+		{
+			m_datasize = CPACKET_HEADER_LEN;
+			m_readptr = m_chrbuffer;
+			m_writeptr = m_chrbuffer + CPACKET_HEADER_LEN + size;
+			m_buffersize = eBUFFER_DEFAULT - size;
+			return m_readptr + CPACKET_HEADER_LEN;
+		}
+
 		//-----------------------------------------------------------------------------------------
 		// 버퍼 사이즈 얻기
 		// Prameter: -

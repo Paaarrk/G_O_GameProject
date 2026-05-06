@@ -693,7 +693,7 @@ void Net::CServer::Init_Rollback()
 			{
 				Core::c_syslog::logging().LogEx(TAG_NET, GetLastError(), Core::c_syslog::en_ERROR, L"Netlib::Init_Rollback() = 스레드 close 오류");
 			}
-			_hThreads[i] = 0;
+			_hThreads[i] = NULL;
 		}
 	}
 
@@ -701,11 +701,13 @@ void Net::CServer::Init_Rollback()
 	if (_hEventForAccept != NULL)
 	{
 		CloseHandle(_hEventForAccept);
+		_hEventForAccept = NULL;
 	}
 
 	if (_hEventForExit != NULL)
 	{
 		CloseHandle(_hEventForExit);
+		_hEventForExit = NULL;
 	}
 
 	ExitMonitoringJob();
