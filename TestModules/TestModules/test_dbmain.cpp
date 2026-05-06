@@ -6,7 +6,8 @@ int main()
 {
 	mysql_library_init(0, NULL, NULL);
 	
-
+	GetConnector<EPhysicalInstance::LOCAL_DB>().SetConnector(
+		"127.0.0.1", "root", "kato0923!!", nullptr, 3306);
 	CDBWriterThread writer;
 
 	std::vector<std::string> v = CDBRequest::Sync_GetWhiteIpList();
@@ -109,6 +110,28 @@ SELECT %lld, '%s', %d, %d, %d, %d FROM DUAL WHERE ROW_COUNT() = 1 ; SELECT ROW_C
 		[](int ret) {printf("Request fin!!: %d \n", ret); }, 100, (int64_t)101,
 		(int64_t)100, std::move(stringgame), 4, 41, 70, 100);
 	writer.Request(wreq);
+
+	uint64_t sessionId = 0x0000'0000'0000'0005;
+	int64_t accountno = 103;
+	int32_t playertype = 3;
+	const wchar_t* sn = L"Game";
+	IAsyncRequest* write = new CAsync_InsertNewCharacter(POOL_USE_LOBBY, sessionId, [](const InsertNewCharacterResType& res) {
+		auto& [accountno, success] = res;
+		if (success)
+		{
+			printf("Insert Success!!\n");
+		}
+		else
+		{
+			printf("Insert Failed\n");
+		}
+	}, accountno, playertype, sn);
+
+	CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(write);
+	while ((ptr = CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().GetResponse<POOL_USE_LOBBY>()) == nullptr) { _mm_pause(); }
+	ptr->ResponseProcess();
+	delete ptr;
+
 
 	return 0;
 }

@@ -111,7 +111,7 @@ private:
 	//----------------------------------
 
 	bool RequestLogin(uint64_t sessionId, const char* readptr, int32_t payloadlen);
-
+	bool RequestCharacterSelect(uint64_t sessionId, const char* readptr, int32_t payloadlen);
 
 	//----------------------------------
 	// From Login Server
@@ -150,7 +150,7 @@ private:
 
 	std::unordered_map<uint64_t, CPlayer*> _lobbyPlayerMap;
 	std::unordered_map<int64_t, uint64_t> _loginAccountNoToSessionIdMap;
-
+	
 	// 계정이랑 엮이지도 않고 정말 메모리만 덩그러니 있는 상태,
 	// 단, DB에 저장중 일 수는 있음
 	std::unordered_map<int64_t, CPlayer*> _logoutAccountNoToPlayerMap;

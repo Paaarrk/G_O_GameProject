@@ -88,9 +88,15 @@ void CPlayer::PlayerWaitLoad(unsigned long curtime) noexcept
 	_recvedTime = curtime;
 }
 
-void CPlayer::PlayerInGameSelect(unsigned long curtime) noexcept
+void CPlayer::PlayerWaitGameSelect(unsigned long curtime) noexcept
 {
-	_playerStatus = PLAYER_IN_GAME_SELECT;
+	_playerStatus = PLAYER_LOGIN_GAME_SELECT;
+	_recvedTime = curtime;
+}
+
+void CPlayer::PlayerWaitGoInGame(unsigned long curtime) noexcept
+{
+	_playerStatus = PLAYER_LOGIN_WAIT_GO_GAME;
 	_recvedTime = curtime;
 }
 

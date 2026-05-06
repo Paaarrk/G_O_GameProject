@@ -7,15 +7,22 @@
 #include "RedisConnector.h"
 #include "ClientToLogin.h"
 
-class CGameServer : Net::CZoneServer
+class CLobby;
+class CGameZone;
+class CGameServer : public Net::CZoneServer
 {
 public:
 	struct stGameServerOpt : public stServerOpt
 	{
 		int32_t lobbyMaxUser;
-		int32_t gameMaxUser;
 		int32_t lobbyMinimumTick;
+
+		int32_t selectMaxUser;
+		int32_t selectMinimumTick;
+
+		int32_t gameMaxUser;
 		int32_t gameMinimumTick;
+
 		int32_t maxZoneCnt;
 
 		char	redisIp[IPV4_LEN];
@@ -26,8 +33,9 @@ public:
 		char	mysql_id[EMysqlConfig::ID_LEN];
 		char	mysql_pw[EMysqlConfig::PW_LEN];
 
-		uint8	loginCode;
-		char	loginIp[IPV4_LEN];
+		uint8_t	loginCode;
+		uint8_t loginKey;
+		wchar_t	loginIp[IPV4_LEN];
 		int16_t loginPort;
 
 		bool LoadOption(const char* path = CONFIG_FILE_PATH);
@@ -68,12 +76,13 @@ public:
 	static CClientToLoginServer& GetLoginServerConnection() { return s_toLoginServerClient; }
 
 	uint64_t GetLobbyId() const noexcept { return _lobbyId; }
-	uint64_t GetCharacterSelectId() const noexcept { return _characterSelectId; }
 	uint64_t GetInGameId() const noexcept { return _inGameId; }
 private:
 	uint64_t _lobbyId = 0;
-	uint64_t _characterSelectId = 0;
 	uint64_t _inGameId = 0;
+
+	CLobby* _lobbyPtr = nullptr;
+	CGameZone* _inGamePtr = nullptr;
 
 	static CClientToLoginServer s_toLoginServerClient;
 	static CRedisConnector s_conn_auth;

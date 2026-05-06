@@ -142,11 +142,13 @@
     <ClCompile Include="DBRequest.cpp" />
     <ClCompile Include="DBWriter.cpp" />
     <ClCompile Include="GameServer.cpp" />
+    <ClCompile Include="GameZone.cpp" />
     <ClCompile Include="Lobby.cpp" />
     <ClCompile Include="LobbyTimerJob.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="RedisConnector.cpp" />
+    <ClCompile Include="staticdatas.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core\Core.vcxproj">
@@ -167,10 +169,12 @@
     <ClInclude Include="DBThreadPool.h" />
     <ClInclude Include="DBWriter.h" />
     <ClInclude Include="GameServer.h" />
+    <ClInclude Include="GameZone.h" />
     <ClInclude Include="Lobby.h" />
     <ClInclude Include="LobbyTimerJob.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="RedisConnector.h" />
+    <ClInclude Include="staticdatas.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

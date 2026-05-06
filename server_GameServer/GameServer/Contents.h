@@ -1,4 +1,5 @@
 #pragma once
+
 #include <chrono>
 #include <type_traits>
 #include <concepts>
@@ -16,12 +17,17 @@ inline static int32_t GetDeltaTimeMs(unsigned long end, unsigned long start)
 	return static_cast<int32_t>(end - start);
 }
 
-inline const wchar_t*	TAG_CONTENTS =		L"Contents";
-inline const wchar_t*	TAG_LOBBY =			L"Lobby";
-inline const wchar_t*	TAG_GAME =			L"Game";
-inline const wchar_t*	TAG_MESSAGE =		L"Message";
-inline const wchar_t*	TAG_TO_CHAT =		L"ClientToChat";
-inline const char*		CONFIG_FILE_PATH =	"..\\Config\\Config.cnf";
+inline constexpr const wchar_t*	TAG_LOAD =			L"Load";
+inline constexpr const wchar_t*	TAG_CONTENTS =		L"Contents";
+inline constexpr const wchar_t*	TAG_LOBBY =			L"Lobby";
+inline constexpr const wchar_t*	TAG_GAME =			L"Game";
+inline constexpr const wchar_t*	TAG_MESSAGE =		L"Message";
+inline constexpr const wchar_t*	TAG_TO_LOGIN =		L"ClientToLogin";
+inline constexpr const char*	CONFIG_FILE_PATH =	"..\\Config\\Config.cnf";
+
+inline constexpr const wchar_t* SERVER_GAME =		L"Game";
+inline constexpr const wchar_t* SERVER_LOGIN =		L"Login";
+inline constexpr const wchar_t* SERVER_CHAT =		L"Chat";
 
 template<typename T>
 concept CStyleBaseTypes = requires {
@@ -60,9 +66,32 @@ enum en_CONTENTS
 	TIME_OUT_MS_GAME = 40000,
 
 	LOBBY_RINGBUFFER_SIZE = 5000,
+
+	ZONE_TYPE = 10000,
+	ZONE_TYPE_LOBBY,
+	ZONE_TYPE_SELECT_CHARACTER,
+	ZONE_TYPE_INGAME,
+
+	ZONE_WEIGHT_INGAME = 99,
 };
 
+enum ECrystalTypes
+{
+	CRISTAL_TYPE_1 = 1,
+	CRISTAL_TYPE_2,
+	CRISTAL_TYPE_3,
 
+	CRISTAL_TYPE_NONE,
+	CRISTAL_TYPE_CNT = CRISTAL_TYPE_NONE - 1,
+};
+
+enum EMonsterTypes
+{
+	MONSTER_TYPE_1 = 1,
+
+	MONSTER_TYPE_NONE,
+	MONSTER_TYPE_CNT = MONSTER_TYPE_NONE - 1,
+};
 
 struct stName
 {
@@ -97,11 +126,9 @@ FixedWString(const wchar_t(&)[size]) -> FixedWString<size>;
 
 
 template <typename T>
-decltype(auto) ToRaw(T&& args)
+constexpr decltype(auto) ToRaw(T&& args)
 {
-	using RawType = std::decay_t<T>;
-
-	if constexpr (requires { RawType::data; } || requires { args.data; }) {
+	if constexpr (requires { args.data; }) {
 		return (const wchar_t*)args.data;
 	}
 	else {
@@ -110,7 +137,9 @@ decltype(auto) ToRaw(T&& args)
 }
 
 
-// | int64_t accoutno | char[20] userid | char[20] usernick | int32_t status |
+// | int64_t accountno | char[20] userid | char[20] usernick | int32_t status |
 using GetAccountInfoResType = std::tuple<int64_t, stName, stName, int32_t>;
-// | int64_t accoutno | int32_t charactertype | float posx | float posy | int32_t tilex | int32_t tiley | int32_t rotation | int32_t cristal | int32_t hp | int64_t exp | int32_t level | int32_t die |
+// | int64_t accountno | int32_t charactertype | float posx | float posy | int32_t tilex | int32_t tiley | int32_t rotation | int32_t cristal | int32_t hp | int64_t exp | int32_t level | int32_t die |
 using GetCharacterInfoResType = std::tuple <int64_t, int32_t, float, float, int32_t, int32_t, int32_t, int32_t, int32_t, int64_t, int32_t, int32_t>;
+// | int64_t accountno | bool |
+using InsertNewCharacterResType = std::tuple <int64_t, bool>;

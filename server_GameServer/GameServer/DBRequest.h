@@ -6,6 +6,7 @@
 #include "DBThreadPool.h"
 #include "DBWriter.h"
 #include "Contents.h"
+#include "staticdatas.h"
 #include <vector>
 #include <string>
 #include <tuple>
@@ -36,10 +37,21 @@ enum ERequestType
 {
 	ASYNC_GET_ACCOUNT_INFO,
 	ASYNC_GET_CHARACTER_INFO,
+	ASYNC_INSERT_CHARACTER,
 };
+
+// [ASYNC_INSERT_CHARACTER]: accountno, playertype, game_static_hp, accountno, servername, playertype
 inline static const wchar_t* QUERY_FORMATS[] = {
 	L"SELECT `accountno`, `userId`, `usernick`, `status` FROM `accountdb`.`v_account` WHERE `accountno` = %lld",
-	L"SELECT * FROM `gamedb`.`character` WHERE `accountno` = %lld"
+
+	L"SELECT * FROM `gamedb`.`character` WHERE `accountno` = %lld",
+
+	L"BEGIN;"
+	L"INSERT INTO `gamedb`.`character` VALUES (%lld, %d, 0.0, 0.0, -1, -1, 0, 0, %d, 0, 0, 0);"
+	L"INSERT INTO `logdb`.`gamelog_%04d_%02d` (`accountno`, `servername`, `type`, `code`, `param1`)"
+	L"SELECT % lld, '%s', 3, 32, %d  FROM DUAL WHERE ROW_COUNT() > 0;"
+	L"SELECT ROW_COUNT() ;"
+	L"COMMIT;"
 };
 
 //-----------------------------------------------------
@@ -146,7 +158,96 @@ private:
 	Lambda _processfunction;
 };
 
+//-----------------------------------------------------
+// WRITE : Pool (Get Response)
+//-----------------------------------------------------
 
+template <typename F>
+concept InsertNewCharacterFunc = std::invocable<F, const InsertNewCharacterResType&>;
+template <InsertNewCharacterFunc Lambda>
+class CAsync_InsertNewCharacter : public IAsyncRequest
+{
+public:
+	CAsync_InsertNewCharacter(EDBPoolUse who, uint64_t sessionId, CPlayer* playerptr, Lambda&& func, int64_t accountno, int32_t playertype, const wchar_t* servername, int32_t game_static_playerHp = CStaticDatas::Player_Hp())
+		:IAsyncRequest(who, sessionId, QUERY_FORMATS[ASYNC_INSERT_CHARACTER]), _playerptr(playerptr), _processfunction(std::forward<Lambda>(func)),
+		_accountno(accountno), _playertype(playertype), _servername(servername), _playerhp(game_static_playerHp)
+	{
+		if constexpr (sizeof(CAsync_InsertNewCharacter<Lambda>) > DBBlock::SIZE)
+			CheckSize<sizeof(CAsync_InsertNewCharacter<Lambda>), static_cast<size_t>(DBBlock::SIZE)> CAsync_InsertNewCharacter;
+	}
+	~CAsync_InsertNewCharacter() override = default;
+
+	void ProcessingQuery() override
+	{
+		tm tm;
+		time_t mytime = time(NULL);
+		localtime_s(&tm, &mytime);
+		CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
+		// [ASYNC_INSERT_CHARACTER]: accountno, playertype, game_static_hp, accountno, servername, playertype
+		int32_t ret = conn.RequestQuery(_query, _accountno, _playertype, _playerhp, tm.tm_year + 1900, tm.tm_mon + 1, _accountno, _servername, _playertype);
+
+		// 여기서 뻑나면 카운트 관리의 문제
+		_playerptr->DecreaseDBRequest();
+
+		int status = 0;
+		int affectrowcount = 0;
+		while (status == 0)
+		{
+			if (conn.GetErrno())
+			{
+				// ret2 , 연결 끊김 -> 그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				_res = { _accountno, false };
+				conn.LogSQLError();
+				conn.RequestQuery(L"ROLLBACK");
+				return;
+			}
+
+			MYSQL_RES* res = conn.GetResult();
+			if (res)
+			{
+				MYSQL_ROW row = mysql_fetch_row(res);
+				affectrowcount = std::stoi(row[0]);
+				conn.FreeResult();
+			}
+			status = conn.MySqlNextResult();
+		}
+
+		if (status > 0)	// 커밋이 실패함
+		{
+			if (conn.GetErrno())
+			{
+				// ret2, 연결 끊김 ->  그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				conn.LogSQLError();
+			}
+			_res = { _accountno, false };
+			conn.RequestQuery(L"ROLLBACK");
+			return;
+		}
+		else if (affectrowcount == 0)	// 커밋은 성공했는데 쿼리 결과에 문제가 있음.
+		{
+			wchar_t query[CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE];
+			swprintf_s(query, CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE, this->_query, _accountno, _playertype, _playerhp, tm.tm_year + 1900, tm.tm_mon + 1, _accountno, _servername, _playertype);
+			Log::logging().Log(TAG_DB, Log::en_ERROR, L"affectrowcount = 0... check query %s", query);
+			_res = { _accountno, false };
+			return;
+		}
+
+		_res = { _accountno, true };
+	}
+	void ResponseProcess() override
+	{
+		_processfunction(_res);
+	}
+private:
+	CPlayer* _playerptr;
+	int64_t _accountno;
+	int32_t _playertype;
+	const wchar_t* _servername;
+	int32_t _playerhp;
+
+	InsertNewCharacterResType _res;
+	Lambda _processfunction;
+};
 
 
 
@@ -167,10 +268,8 @@ public:
 	{
 
 	}
-	~CAsync_WriteRequest() override 
-	{
-		
-	}
+	~CAsync_WriteRequest() override = default;
+
 	// 해당 작업이 완료되면 작업객체는 소멸됩니다
 	void WriteProcess() override
 	{

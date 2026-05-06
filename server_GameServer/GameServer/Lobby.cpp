@@ -14,6 +14,7 @@
 
 #include "logclassV1.h"
 using Log = Core::c_syslog;
+using namespace Net;
 
 CLobby::CLobby():_useTimeout(true), _signal{ SIGNAL_OFF }, 
 _lobbyToRedis(sizeof(stAuthRequest) * LOBBY_RINGBUFFER_SIZE),
@@ -46,10 +47,15 @@ void CLobby::PlayerLoad(CPlayer* player)
 	player->PlayerWaitLoad(GetTickStartTime());
 	CPlayer* befmem = GetLogoutPlayerMemory(player->GetAccountNo());
 	if (befmem != nullptr)
-	{	// 기존 접속에 관한 메모리가 있음
+	{	// 기존 접속에 관한 메모리가 있음, 바로 이동시키자
 		player->LoadPlayer(*befmem);
 		CPlayer::Free(befmem);
 		GetZoneManager()->MoveZone(GetMyServer()->GetInGameId(), player->GetSessionId());
+		CPACKET_CREATE(pkt);
+		*pkt << (uint16_t)en_PACKET_CS_GAME_RES_LOGIN
+			<< (uint8_t)1
+			<< player->GetAccountNo();
+		SendPacket(player->GetSessionId(), pkt.GetCPacketPtr());
 		return;
 	}
 	else
@@ -72,16 +78,26 @@ void CLobby::PlayerDelayLoad(CPlayer* player)
 			return;
 		}
 		int64_t accountno = std::get<0>(res);
-		if (accountno == 0) // 미발견
+		if (accountno == 0) // 미발견, 캐릭터 생성 필요
 		{
-			GetZoneManager()->MoveZone(GetMyServer()->GetCharacterSelectId(), sessionId);
+			player->PlayerWaitGameSelect(GetTickStartTime());
+			CPACKET_CREATE(pkt);
+			*pkt << (uint16_t)en_PACKET_CS_GAME_RES_LOGIN
+				 << (uint8_t)2
+				 << player->GetAccountNo();
+			SendPacket(sessionId, pkt.GetCPacketPtr());
 			return;
 		}
 
 		// 게임 로드도 성공, 인게임으로 이동 시켜야함
 		player->LoadPlayer(res);
 		GetZoneManager()->MoveZone(GetMyServer()->GetInGameId(), sessionId);
-		
+		CPACKET_CREATE(pkt);
+		*pkt << (uint16_t)en_PACKET_CS_GAME_RES_LOGIN
+			 << (uint8_t)1
+			 << player->GetAccountNo();
+		SendPacket(sessionId, pkt.GetCPacketPtr());
+
 	});
 }
 CPlayer* CLobby::GetLogoutPlayerMemory(int64_t accountNo)
@@ -171,6 +187,11 @@ void CLobby::OnMessage(uint64_t sessionId, const char* readPtr, int payloadlen)
 		break;
 	}
 }
+
+//---------------------------------------------------------
+// Packets
+//---------------------------------------------------------
+
 bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t payloadlen)
 {
 	int64_t accountNo;
@@ -216,7 +237,59 @@ bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t paylo
 
 	return true;
 }
+bool CLobby::RequestCharacterSelect(uint64_t sessionId, const char* readptr, int32_t payloadlen)
+{
+	uint8_t charType;
+	if (payloadlen != SizeOf(charType))
+	{
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), Packet Payloadlen Error(%d is strange(%d))", sessionId, payloadlen, SizeOf(charType));
+		return false;
+	}
+	CPlayer* player = FindPlayerInLobby(sessionId);
+	if (player == nullptr)
+	{
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), is logined or not connected", sessionId);
+		return false;
+	}
+	if (player->GetPlayerStatus() != EPlayerState::PLAYER_LOGIN_GAME_SELECT)
+	{
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), Duplicate Login Packet ", sessionId);
+		return false;
+	}
 
+	memcpy(&charType, &readptr, sizeof(charType));
+	readptr += sizeof(charType);
+	
+	if (0 <= charType || charType > 5)
+	{
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), charType is not ranged [1, 5](%d)", charType);
+		return false;
+	}
+
+	IAsyncRequest* req = new CAsync_InsertNewCharacter(EDBPoolUse::POOL_USE_LOBBY, sessionId, player, [this, sessionId](const InsertNewCharacterResType& res){
+		const auto& [accountno, success] = res;
+
+		CPlayer* player = this->FindPlayerInLobby(sessionId);
+		if (player == nullptr)
+		{
+			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] ResponseCharacterSelect(), 이미 나간 플레이어", sessionId);
+			Disconnect(sessionId);
+			return;
+		}
+		if (player->GetPlayerStatus() != PLAYER_LOGIN_WAIT_SELECT_DB_SAVE)
+		{
+			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] ResponseCharacterSelect() 플레이어 상태 %d로 이상함(%d)", player->GetPlayerStatus(), PLAYER_LOGIN_WAIT_SELECT_DB_SAVE);
+			Disconnect(sessionId);
+			return;
+		}
+		
+		// TODO
+
+	}, player->GetAccountNo(), charType, SERVER_GAME);
+
+
+	return true;
+}
 
 //---------------------------------------------------------
 // Get
@@ -237,6 +310,7 @@ bool CLobby::RequestAuthRedis(const stAuthRequest* req)
 	if (size != sizeof(*req))
 		return false;
 	_signal.exchange(SIGNAL_ON, std::memory_order_seq_cst);
+	_signal.notify_one();
 	return true;
 }
 CPlayer* CLobby::ResponseAuthRedis(const stAuthResponse* res) const

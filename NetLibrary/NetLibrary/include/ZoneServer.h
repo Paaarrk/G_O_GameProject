@@ -268,7 +268,11 @@ namespace Net
 
 		// »ý¼ºÀÚ
 		CZoneServer();
-		virtual ~CZoneServer() {}
+		virtual ~CZoneServer() 
+		{
+			Init_Rollback();
+			_monitorJob->CancelJob();
+		}
 
 		bool SetUserPointer(uint64_t sessionId, void* userPtr);
 		

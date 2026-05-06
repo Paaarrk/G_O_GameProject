@@ -58,6 +58,12 @@
     <Filter Include="헤더 파일\DB">
       <UniqueIdentifier>{d8bbd15e-a007-4427-9e35-127753a33739}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Contents\Game">
+      <UniqueIdentifier>{316f9bff-5de4-4db6-8b3e-56dd4d17879a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Contents\Game">
+      <UniqueIdentifier>{e9de0b3d-c93e-4bca-9e6c-eb2dce6d010a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -89,6 +95,12 @@
     </ClCompile>
     <ClCompile Include="DBWriter.cpp">
       <Filter>소스 파일\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="GameZone.cpp">
+      <Filter>소스 파일\Contents\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="staticdatas.cpp">
+      <Filter>소스 파일\Tools</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -133,6 +145,12 @@
     </ClInclude>
     <ClInclude Include="DBWriter.h">
       <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="GameZone.h">
+      <Filter>헤더 파일\Contents\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="staticdatas.h">
+      <Filter>헤더 파일\Tools</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

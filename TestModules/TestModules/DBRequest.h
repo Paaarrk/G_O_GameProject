@@ -48,16 +48,34 @@ enum ERequestType
 {
 	ASYNC_GET_ACCOUNT_INFO,
 	ASYNC_GET_CHARACTER_INFO,
+	ASYNC_INSERT_CHARACTER,
+	ASYNC_UPDATE_LOGOUT,
 };
 inline static const wchar_t* QUERY_FORMATS[] = {
 	L"SELECT `accountno`, `userId`, `usernick`, `status` FROM `accountdb`.`v_account` WHERE `accountno` = %lld",
-	L"SELECT * FROM `gamedb`.`character` WHERE `accountno` = %lld"
+	L"SELECT * FROM `gamedb`.`character` WHERE `accountno` = %lld",
+
+	L"BEGIN;"
+	L"INSERT INTO `gamedb`.`character` VALUES (%lld, %d, 0.0, 0.0, -1, -1, 0, 0, %d, 0, 0, 0);"
+	L"INSERT INTO `logdb`.`gamelog_%04d_%02d` (`accountno`, `servername`, `type`, `code`, `param1`)"
+	L"SELECT %lld, '%s', 3, 32, %d  FROM DUAL WHERE ROW_COUNT() > 0;"
+	L"SELECT ROW_COUNT() ;"
+	L"COMMIT;",
+
+	L"BEGIN;"
+	L"UPDATE `accountdb`.`status` SET (`status` = 0) WHERE (`accountno` = %lld);"
+	L"INSERT INTO `logdb`.`gamelog_%04d_%02d` (`accountno`, `servername`, `type`, `code`, `param1`, `param2`, `param3`)"
+	L"SELECT %lld, 's', 1, 12, %d, %d, %d FROM DUAL WHERE ROW_COUNT() > 0; "
+	L"COMMIT;"
 };
 // | int64_t accoutno | char[20] userid | char[20] usernick | int32_t status |
 using GetAccountInfoResType = std::tuple<int64_t, stName, stName, int32_t>;
 // | int64_t accoutno | int32_t charactertype | float posx | float posy | int32_t tilex | int32_t tiley | int32_t rotation | int32_t cristal | int32_t hp | int64_t exp | int32_t level | int32_t die |
 using GetCharacterInfoResType = std::tuple <int64_t, int32_t, float, float, int32_t, int32_t, int32_t, int32_t, int32_t, int64_t, int32_t, int32_t>;
-
+// | int64_t accountno | bool success |
+using InsertNewCharacterResType = std::tuple <int64_t, bool>;
+// | int64_t accountno | bool success |
+using UpdateLogoutResType = std::tuple <int64_t, bool>;
 
 //-----------------------------------------------------
 // READ : Pool (Get Response)
@@ -163,7 +181,116 @@ private:
 	Lambda _processfunction;
 };
 
+//-----------------------------------------------------
+// WRITE : Pool (Get Response)
+//-----------------------------------------------------
 
+template <typename F>
+concept InsertNewCharacterFunc = std::invocable<F, const InsertNewCharacterResType&>;
+template <InsertNewCharacterFunc Lambda>
+class CAsync_InsertNewCharacter : public IAsyncRequest
+{
+public:
+	CAsync_InsertNewCharacter(EDBPoolUse who, uint64_t sessionId, Lambda&& func, int64_t accountno, int32_t playertype, const wchar_t* servername, int32_t game_static_playerHp = 5000)
+		:IAsyncRequest(who, sessionId, QUERY_FORMATS[ASYNC_INSERT_CHARACTER]), _processfunction(std::forward<Lambda>(func)),
+		_accountno(accountno), _playertype(playertype), _servername(servername), _playerhp(game_static_playerHp)
+	{
+		if constexpr (sizeof(CAsync_InsertNewCharacter<Lambda>) > DBBlock::SIZE)
+			CheckSize<sizeof(CAsync_InsertNewCharacter<Lambda>), static_cast<size_t>(DBBlock::SIZE)> CAsync_InsertNewCharacter;
+	}
+	~CAsync_InsertNewCharacter() override = default;
+
+	void ProcessingQuery() override
+	{
+		tm tm;
+		time_t mytime = time(NULL);
+		localtime_s(&tm, &mytime);
+		CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
+		// [ASYNC_INSERT_CHARACTER]: accountno, playertype, game_static_hp, accountno, servername, playertype
+		int32_t ret = conn.RequestQuery(_query, _accountno, _playertype, _playerhp, tm.tm_year + 1900, tm.tm_mon + 1, _accountno, _servername, _playertype);
+
+		int status = 0;
+		int affectrowcount = 0;
+		while (status == 0)
+		{
+			if (conn.GetErrno())
+			{
+				// ret2 , 연결 끊김 -> 그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				_res = { _accountno, false };
+				conn.LogSQLError();
+				conn.RequestQuery(L"ROLLBACK");
+				return;
+			}
+
+			MYSQL_RES* res = conn.GetResult();
+			if (res)
+			{
+				MYSQL_ROW row = mysql_fetch_row(res);
+				affectrowcount = std::stoi(row[0]);
+				conn.FreeResult();
+			}
+			status = conn.MySqlNextResult();
+		}
+
+		if (status > 0)	// 커밋이 실패함
+		{
+			if (conn.GetErrno())
+			{
+				// ret2, 연결 끊김 ->  그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				conn.LogSQLError();
+			}
+			_res = { _accountno, false };
+			conn.RequestQuery(L"ROLLBACK");
+			return;
+		}
+		else if (affectrowcount == 0)	// 커밋은 성공했는데 쿼리 결과에 문제가 있음.
+		{
+			wchar_t query[CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE];
+			swprintf_s(query, CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE, this->_query, _accountno, _playertype, _playerhp, tm.tm_year + 1900, tm.tm_mon + 1, _accountno, _servername, _playertype);
+			Log::logging().Log(TAG_DB, Log::en_ERROR, L"affectrowcount = 0... check query %s", query);
+			_res = { _accountno, false };
+			return;
+		}
+
+		_res = { _accountno, true };
+	}
+	void ResponseProcess() override
+	{
+		_processfunction(_res);
+	}
+private:
+	int64_t _accountno;
+	int32_t _playertype;
+	const wchar_t* _servername;
+	int32_t _playerhp;
+
+	InsertNewCharacterResType _res;
+	Lambda _processfunction;
+};
+
+template <typename F>
+concept UpdateLogoutFunc = std::invocable<F, const UpdateLogoutResType&>;
+template <UpdateLogoutFunc Lambda>
+class CAsync_UpdateLogout
+{
+public:
+	CAsync_UpdateLogout(EDBPoolUse who, uint64_t sessionId, Lambda&& responsefunc, )
+	{
+
+	}
+	~CAsync_UpdateLogout() override = default;
+	void ProcessingQuery() override
+	{
+
+	}
+	void ResponseProcess() override
+	{
+
+	}
+private:
+	UpdateLogoutResType _res;
+	Lambda _processfunction;
+};
 
 
 

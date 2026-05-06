@@ -382,7 +382,7 @@ private:
 };
 
 template <EPhysicalInstance instance>
-inline static CTlsMySqlConnector<instance> g_connector;
+inline CTlsMySqlConnector<instance> g_connector;
 
 template <EPhysicalInstance instance>
 static CTlsMySqlConnector<instance>& GetConnector()
