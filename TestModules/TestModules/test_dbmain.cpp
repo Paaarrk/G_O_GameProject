@@ -5,7 +5,6 @@
 int main()
 {
 	mysql_library_init(0, NULL, NULL);
-	
 	CDBWriterThread writer;
 
 	std::vector<std::string> v = CDBRequest::Sync_GetWhiteIpList();
