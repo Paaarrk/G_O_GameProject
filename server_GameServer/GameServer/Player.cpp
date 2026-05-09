@@ -1,7 +1,7 @@
 #include "Player.h"
 #include <malloc.h>
 
-CPlayer::CPlayer() noexcept
+CPlayer::CPlayer() noexcept :_pos(0.0f, 0.0f, (uint16_t)0)
 {
 	_wip = (wchar_t*)malloc(sizeof(wchar_t) * IPV4_LEN + sizeof(char) * SESSION_KEY_LEN);
 	_sessionKey = reinterpret_cast<char*>(_wip) + sizeof(wchar_t) * IPV4_LEN;
@@ -16,36 +16,33 @@ CPlayer::~CPlayer()
 	free(_wip);
 }
 
-void CPlayer::LoadPlayer(CPlayer& origin) noexcept
+bool CPlayer::LoadPlayer(CPlayer& origin) noexcept
 {
+	if (origin._befPlayerStatus < PLAYER_IN_GAME) 
+		return false;
+
 	_playerStatus = origin._befPlayerStatus;
 	_playerType = origin._playerType;
 
-	// TODO
-	// 멀티스레드로 접근하는 일부 자원(db참조카운트 등)은
-	// 반드시 move형태로 옮겨져야한다.
-	_posX = origin._posX;
-	_posY = origin._posY;
-	_rotate = origin._rotate;
-	_tileX = static_cast<int32_t>(_posX) * 2;
-	_tileY = static_cast<int32_t>(_posY) * 2;
+	_pos = origin._pos;
+	_tileX = static_cast<int32_t>(_pos.x * static_cast<float>(EMap::TILE_X / EMap::X));
+	_tileY = static_cast<int32_t>(_pos.y * static_cast<float>(EMap::TILE_Y / EMap::Y));
 	_hp = origin._hp;
 	_exp = origin._exp;
 	_level = origin._level;
-	_crystal = origin._crystal;
-	wcscpy_s(_nickname, origin._nickname);
+	_cristal = origin._cristal;
+	// wcscpy_s(_nickname, origin._nickname);. 지금은 db에서 읽지 않고 클라가 들고옴
+	return true;
 }
 
 void CPlayer::LoadPlayer(const GetCharacterInfoResType& dbload) noexcept
 {
 	const auto& [accountno, charactertype, posx, posy, tilex, tiley, rotation, cristal, hp, exp, level, die] = dbload;
 	_playerType = charactertype;
-	_posX = posx;
-	_posY = posy;
+	_pos.SetPos(posy, posx, rotation);
 	_tileX = tilex;
 	_tileY = tiley;
-	_rotate = rotation;
-	_crystal = cristal;
+	_cristal = cristal;
 	_hp = hp;
 	_exp = exp;
 	_level = level;
@@ -94,6 +91,12 @@ void CPlayer::PlayerWaitGameSelect(unsigned long curtime) noexcept
 	_recvedTime = curtime;
 }
 
+void CPlayer::PlayerWaitSelectDBSave(unsigned long curtime) noexcept
+{
+	_playerStatus = PLAYER_LOGIN_WAIT_SELECT_DB_SAVE;
+	_recvedTime = curtime;
+}
+
 void CPlayer::PlayerWaitGoInGame(unsigned long curtime) noexcept
 {
 	_playerStatus = PLAYER_LOGIN_WAIT_GO_GAME;
@@ -103,7 +106,15 @@ void CPlayer::PlayerWaitGoInGame(unsigned long curtime) noexcept
 
 void CPlayer::PlayerLogout(unsigned long curtime) noexcept
 {
+	_befPlayerStatus = _playerStatus;
 	_playerStatus = PLAYER_LOGOUT;
 	_recvedTime = curtime;
+}
+
+void CPlayer::SetPlayerFirstCreate(int32_t playerType, int32_t hp)
+{
+	_playerType = playerType;
+	_hp = hp; _tileX = -1; _tileY = -1;
+	_exp = 0; _level = 0; _cristal = 0;
 }
 

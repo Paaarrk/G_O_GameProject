@@ -45,7 +45,7 @@ int main()
 	ret = g_game.Start();
 	if (ret == false) return 0;
 
-
+	while (1) { ; }
 
 	g_game.Stop(1);
 	Net::CNetProcess::GetProcessTimer().ExitTimer();

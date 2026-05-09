@@ -29,6 +29,9 @@ inline constexpr const wchar_t* SERVER_GAME =		L"Game";
 inline constexpr const wchar_t* SERVER_LOGIN =		L"Login";
 inline constexpr const wchar_t* SERVER_CHAT =		L"Chat";
 
+inline constexpr const wchar_t* GAME_LOBBY_LOGOUT =		L"Lobby Logout";
+inline constexpr const wchar_t* GAME_IN_GAME_LOGOUT =	L"InGame Logout";
+
 template<typename T>
 concept CStyleBaseTypes = requires {
 	typename std::remove_cvref_t<T>;
@@ -64,6 +67,7 @@ enum en_CONTENTS
 
 	TIME_OUT_MS_LOBBY = 20000,
 	TIME_OUT_MS_GAME = 40000,
+	TIME_OUT_MS_PLAYER_MEMORY = 60000,
 
 	LOBBY_RINGBUFFER_SIZE = 5000,
 
@@ -92,6 +96,19 @@ enum EMonsterTypes
 	MONSTER_TYPE_NONE,
 	MONSTER_TYPE_CNT = MONSTER_TYPE_NONE - 1,
 };
+
+enum EMap
+{
+	TILE_Y = 200,
+	TILE_X = 400,
+
+	Y = TILE_Y * 2,
+	X = TILE_X * 2,
+};
+constexpr float Map_MaxY() { return static_cast<float>(EMap::Y); }
+constexpr float Map_MaxX() { return static_cast<float>(EMap::X); }
+constexpr float Map_MinY() { return 0.0f; }
+constexpr float Map_MinX() { return 0.0f; }
 
 struct stName
 {
@@ -143,3 +160,5 @@ using GetAccountInfoResType = std::tuple<int64_t, stName, stName, int32_t>;
 using GetCharacterInfoResType = std::tuple <int64_t, int32_t, float, float, int32_t, int32_t, int32_t, int32_t, int32_t, int64_t, int32_t, int32_t>;
 // | int64_t accountno | bool |
 using InsertNewCharacterResType = std::tuple <int64_t, bool>;
+// | int64_t accountno | bool success |
+using UpdateLogoutResType = std::tuple <int64_t, bool>;

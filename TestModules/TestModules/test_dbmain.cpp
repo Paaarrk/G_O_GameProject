@@ -6,7 +6,6 @@ int main()
 {
 	mysql_library_init(0, NULL, NULL);
 	CDBWriterThread writer;
-
 	std::vector<std::string> v = CDBRequest::Sync_GetWhiteIpList();
 	std::vector<std::pair<int, int>> v2 = CDBRequest::Sync_GetCrystalData();
 	std::vector<std::tuple<int, int, int>> v3 = CDBRequest::Sync_GetPlayerBaseData();
@@ -129,6 +128,31 @@ SELECT %lld, '%s', %d, %d, %d, %d FROM DUAL WHERE ROW_COUNT() = 1 ; SELECT ROW_C
 	ptr->ResponseProcess();
 	delete ptr;
 
+	uint64_t sessionId2 = 0x0000'0000'0000'0005;
+	int64_t acountno2 = 101;
+	int32_t tilex = -1;
+	int32_t tiley = -1;
+	int32_t cristal = -1;
+	int32_t hp = -1;
 
+	// EDBPool, sessionid, responsefunc(const UpdateLogoutResType&), accountno, tilex, tiley, cristal, hp
+	write = new CAsync_UpdateLogout(POOL_USE_LOBBY, sessionId2, [](const InsertNewCharacterResType& res) {
+		auto& [accountno, success] = res;
+		if (success)
+		{
+			printf("Logout Success!!\n");
+		}
+		else
+		{
+			printf("Logout Failed\n");
+		}
+	}, acountno2, tilex, tiley, cristal, hp, L"Lobby Logout");
+
+	CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(write);
+	while ((ptr = CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().GetResponse<POOL_USE_LOBBY>()) == nullptr) { _mm_pause(); }
+	ptr->ResponseProcess();
+	delete ptr;
+
+	Sleep(100);
 	return 0;
 }

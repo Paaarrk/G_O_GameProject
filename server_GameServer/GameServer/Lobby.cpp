@@ -16,18 +16,21 @@
 using Log = Core::c_syslog;
 using namespace Net;
 
+//---------------------------------------------------------
+// Constructor & Destructor
+//---------------------------------------------------------
+
 CLobby::CLobby():_useTimeout(true), _signal{ SIGNAL_OFF }, 
 _lobbyToRedis(sizeof(stAuthRequest) * LOBBY_RINGBUFFER_SIZE),
 _redisToLobby(sizeof(stAuthResponse) * LOBBY_RINGBUFFER_SIZE),
-_staticDBReadPool(CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool())
+_staticDBPool(CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool())
 {
 	_lobbyPlayerMap.reserve(GetMaxUsers());
 	_loginAccountNoToSessionIdMap.reserve(GetMaxUsers());
 	_logoutAccountNoToPlayerMap.reserve(GetMaxUsers());
 
-	_redisThread = std::thread(&CLobby::RedisThreadFunc, this);
+	_redisThread = std::thread(&CLobby::Redis_ThreadFunc, this);
 }
-
 CLobby::~CLobby()
 {
 	stAuthRequest req;
@@ -48,7 +51,12 @@ void CLobby::PlayerLoad(CPlayer* player)
 	CPlayer* befmem = GetLogoutPlayerMemory(player->GetAccountNo());
 	if (befmem != nullptr)
 	{	// 기존 접속에 관한 메모리가 있음, 바로 이동시키자
-		player->LoadPlayer(*befmem);
+		if (player->LoadPlayer(*befmem) == false)
+		{
+			CPlayer::Free(befmem);
+			PlayerDelayLoad(player);
+			return;
+		}
 		CPlayer::Free(befmem);
 		GetZoneManager()->MoveZone(GetMyServer()->GetInGameId(), player->GetSessionId());
 		CPACKET_CREATE(pkt);
@@ -99,6 +107,7 @@ void CLobby::PlayerDelayLoad(CPlayer* player)
 		SendPacket(sessionId, pkt.GetCPacketPtr());
 
 	});
+	CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(pRequest);
 }
 CPlayer* CLobby::GetLogoutPlayerMemory(int64_t accountNo)
 {
@@ -134,9 +143,26 @@ void CLobby::OnUpdate()
 		}
 	}
 
-	CheckLoginServerResponses();
-	CheckRedisResponses();
-	CheckDBResponses();
+	Check_LoginServerResponse();
+	Check_RedisResponse();
+	Check_DBResponse();
+
+	// 나간 유저들 메모리 관리 (DB저장 대기 및 일부러 재사용때문에 냅두는 것들)
+	for (auto& [accountno, mem] : _logoutAccountNoToPlayerMap)
+	{
+		int64_t deltaTime = GetDeltaTimeMs(curTime, mem->GetLastRecvedTime());
+		if (deltaTime < TIME_OUT_MS_PLAYER_MEMORY) continue;
+
+		if (mem->DBRequestFin())
+		{
+			_logoutAccountNoToPlayerMap.erase(accountno);
+			CPlayer::Free(mem);
+		}
+		else
+		{
+			Log::logging().Log(TAG_LOBBY, Log::en_SYSTEM, L"DB 저장이 제대로 안되나 확인 ... 60초지나도 완료가 안됨");
+		}
+	}
 }
 void CLobby::OnEnter(uint64_t sessionId, void* playerPtr, std::wstring* ip)
 {
@@ -168,11 +194,47 @@ void CLobby::OnEnter(uint64_t sessionId, void* playerPtr, std::wstring* ip)
 }
 void CLobby::OnLeave(uint64_t sessionId, bool bNeedPlayerDelete)
 {
-	
+	if (bNeedPlayerDelete)
+	{
+		CPlayer* player = FindPlayerInLobby(sessionId);
+		if (player != nullptr)
+		{
+			int32_t playerstatus = player->GetPlayerStatus();
+			if (EPlayerState::PLAYER_LOGIN <= playerstatus && playerstatus < EPlayerState::PLAYER_IN_GAME)
+			{
+				// DB Logout찍기
+				IAsyncRequest* logoutreq = new CAsync_UpdateLogout(POOL_USE_LOBBY, sessionId, player,
+				[](const UpdateLogoutResType& res) {
+					// DB반영 실패 -> 나중에 kick요청시 재시도
+					// DB반영 성공 -> ok
+					// 플레이어 지우기는 나중에 한번에
+					// 여기서 할 것은 없음
+				}, player->GetAccountNo(), player->GetTileX(), player->GetTileY(), player->GetCristal(), player->GetHp(), GAME_LOBBY_LOGOUT);
+
+				player->IncreaseDBRequest();
+				player->PlayerLogout(GetTickStartTime());
+				CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(logoutreq);
+
+				_loginAccountNoToSessionIdMap.erase(sessionId);
+				auto [it, success] = _logoutAccountNoToPlayerMap.insert({ player->GetAccountNo(), player });
+				if (!success)
+				{
+					Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"Lobby::Onleave() 로그인 두개 받은건지 체크... 재사용 코드에서 안뺏는지 체크...");
+				}
+				
+			}
+			else // 로그인이 아닌 연결
+			{
+				CPlayer::Free(player);
+			}
+		}
+	}
+
+	_lobbyPlayerMap.erase(sessionId);
 }
 void CLobby::OnMessage(uint64_t sessionId, const char* readPtr, int payloadlen)
 {
-	uint16_t type = CheckType(readPtr, payloadlen);
+	uint16_t type = RequestCheckType(readPtr, payloadlen);
 	switch (type)
 	{
 	case en_PACKET_CS_GAME_REQ_LOGIN:
@@ -181,6 +243,21 @@ void CLobby::OnMessage(uint64_t sessionId, const char* readPtr, int payloadlen)
 			Disconnect(sessionId);	// 사유는 함수 내부에서
 		}
 		break;
+	
+	case en_PACKET_CS_GAME_REQ_CHARACTER_SELECT:
+		if (RequestCharacterSelect(sessionId, readPtr, payloadlen) == false)
+		{
+			Disconnect(sessionId);	// 사유는 함수 내부에서
+		}
+		break;
+
+	case en_PACKET_CS_GAME_REQ_HEARTBEAT:
+		if (RequestHeartbeat(sessionId, readPtr, payloadlen) == false)
+		{
+			Disconnect(sessionId);
+		}
+		break;
+
 	default:
 		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] Strange Packet Type: %d", type);
 		Disconnect(sessionId);
@@ -215,11 +292,11 @@ bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t paylo
 		return false;
 	}
 
-	memcpy(&accountNo, &readptr, sizeof(accountNo)); 
+	memcpy(&accountNo, readptr, sizeof(accountNo)); 
 	readptr += sizeof(accountNo);
-	memcpy(&sessionKey64, &readptr, sizeof(sessionKey64));
+	memcpy(&sessionKey64, readptr, sizeof(sessionKey64));
 	readptr += sizeof(sessionKey64);
-	memcpy(&version, &readptr, sizeof(version));
+	memcpy(&version, readptr, sizeof(version));
 	readptr += sizeof(version);
 
 	player->PlayerWaitRedisCheck(GetTickStartTime(), accountNo, sessionKey64, version);
@@ -227,7 +304,7 @@ bool CLobby::RequestLogin(uint64_t sessionId, const char* readptr, int32_t paylo
 	// Redis 스레드에 요청 보냄
 	char ip[IPV4_LEN];
 	WideCharToMultiByte(CP_UTF8, 0, player->GetPlayerIp(), -1, ip, IPV4_LEN, NULL, NULL);
-	stAuthRequest redisreq(sessionId, accountNo, sessionKey64, ip);
+	stAuthRequest redisreq(sessionId, accountNo, sessionKey64);
 	if (RequestAuthRedis(&redisreq) == false)
 	{
 		// 큐가 꽉참, 처리가 늦어지는중
@@ -257,17 +334,27 @@ bool CLobby::RequestCharacterSelect(uint64_t sessionId, const char* readptr, int
 		return false;
 	}
 
-	memcpy(&charType, &readptr, sizeof(charType));
+	memcpy(&charType, readptr, sizeof(charType));
 	readptr += sizeof(charType);
 	
-	if (0 <= charType || charType > 5)
+	if ('1' < charType || charType > '5')
 	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), charType is not ranged [1, 5](%d)", charType);
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestCharacterSelect(), charType is not ranged [1, 5](%d)", sessionId, (int)(charType - '0'));
 		return false;
 	}
 
+
+	player->SetPlayerFirstCreate(static_cast<int32_t>(charType - '0'), CStaticDatas::Player_Hp());
+	player->PlayerWaitSelectDBSave(GetTickStartTime());
 	IAsyncRequest* req = new CAsync_InsertNewCharacter(EDBPoolUse::POOL_USE_LOBBY, sessionId, player, [this, sessionId](const InsertNewCharacterResType& res){
 		const auto& [accountno, success] = res;
+
+		if (!success)
+		{
+			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx | accountno: %lld] ResponseCharacterSelect() 플레이어 새 캐릭터 생성 DB 실패", sessionId, accountno);
+			Disconnect(sessionId);
+			return;
+		}
 
 		CPlayer* player = this->FindPlayerInLobby(sessionId);
 		if (player == nullptr)
@@ -282,23 +369,28 @@ bool CLobby::RequestCharacterSelect(uint64_t sessionId, const char* readptr, int
 			Disconnect(sessionId);
 			return;
 		}
-		
-		// TODO
+
+		// 바로 존 이동
+		GetZoneManager()->MoveZone(GetMyServer()->GetInGameId(), sessionId);
 
 	}, player->GetAccountNo(), charType, SERVER_GAME);
+	player->IncreaseDBRequest(); 
+	CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(req);
+
+	return true;
+}
+bool CLobby::RequestHeartbeat(uint64_t sessionId, const char* readptr, int32_t payloadlen)
+{
+	if (payloadlen != SizeOf())
+	{
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] RequestHeartbeat(), Packet Payloadlen Error(%d is strange(%d))", sessionId, payloadlen, SizeOf());
+		return false;
+	}
 
 
 	return true;
 }
 
-//---------------------------------------------------------
-// Get
-//---------------------------------------------------------
-
-CGameServer* CLobby::GetMyServer() const
-{ 
-	return reinterpret_cast<CGameServer*>(GetZoneServer()); 
-}
 
 //------------------------------------------
 // Redis
@@ -328,7 +420,7 @@ CPlayer* CLobby::ResponseAuthRedis(const stAuthResponse* res) const
 	}
 	return player;
 }
-void CLobby::CheckRedisResponses()
+void CLobby::Check_RedisResponse()
 {
 	stAuthResponse res;
 	while (_redisToLobby.Dequeue(reinterpret_cast<char*>(&res), sizeof(res)) == sizeof(res))
@@ -344,7 +436,6 @@ void CLobby::CheckRedisResponses()
 		}
 		
 		// 상태 변경
-		player->PlayerWaitDbCheck(GetTickStartTime(), res.sessionId);
 		IAsyncRequest* req = new CAsync_GetAccountInfo(POOL_USE_LOBBY, res.sessionId, player->GetAccountNo(), 
 		[this, sessionId = res.sessionId](const GetAccountInfoResType& res) {
 			
@@ -388,7 +479,9 @@ void CLobby::CheckRedisResponses()
 			// 다음으로 캐릭터 정보 읽어오기
 			this->PlayerLoad(player);
 		});
-		
+
+		player->PlayerWaitDbCheck(GetTickStartTime(), res.sessionId);
+		CDBThreadPool<POOL_USE_COUNT>::GetDBThreadPool().RequestQuery(req);
 	}
 }
 
@@ -397,10 +490,10 @@ void CLobby::CheckRedisResponses()
 // DB
 //----------------------------------
 
-void CLobby::CheckDBResponses()
+void CLobby::Check_DBResponse()
 {
 	IAsyncRequest* request;
-	while ((request = _staticDBReadPool.GetResponse<POOL_USE_LOBBY>()) != nullptr)
+	while ((request = _staticDBPool.GetResponse<POOL_USE_LOBBY>()) != nullptr)
 	{
 		request->ResponseProcess();
 		delete request;
@@ -411,7 +504,7 @@ void CLobby::CheckDBResponses()
 // From LoginServer
 //--------------------------------------
 
-void CLobby::CheckLoginServerResponses()
+void CLobby::Check_LoginServerResponse()
 {
 	Core::CLockFreeQueue<Net::CPacket*>& q = _fromLoginQ;
 	Net::CPacket* pPacket;
@@ -422,7 +515,7 @@ void CLobby::CheckLoginServerResponses()
 		switch (type)
 		{
 		case en_PACKET_SS_REQ_NEW_CLIENT_LOGIN:
-			RequestNewClientLogin(pPacket);
+			Login_RequestNewClientLogin(pPacket);
 			break;
 		default:
 			Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"Loginserver response 에 이상이 있음");
@@ -432,9 +525,9 @@ void CLobby::CheckLoginServerResponses()
 		Net::CPacket::Free(pPacket);
 	}
 }
-void CLobby::RequestNewClientLogin(Net::CPacket* packet)
+void CLobby::Login_RequestNewClientLogin(Net::CPacket* packet)
 {
-	int16_t type;	// 일부러 초기화 안함
+	int16_t type;
 	int64_t accountno;
 	uint64_t sequence;
 	if (packet->GetDataSize() != SizeOf(accountno, sequence))
@@ -448,15 +541,17 @@ void CLobby::RequestNewClientLogin(Net::CPacket* packet)
 	*packet >> sequence;
 	uint64_t sessionId;
 	if ((sessionId = FindLoginSession(accountno)) != 0)
-	{	// 누가 게임중, 킥 준비
+	{	// 누가 게임중, 킥 준비, Logout이 안찍혀서 킥 해달라고 패킷이 온 상황
 		Log::logging().Log(TAG_LOBBY, Log::en_SYSTEM, L"[sessionId: %016llx] 새로운 세션 로그인으로 받을 준비하기 위한 킥", sessionId);
 		Disconnect(sessionId);
 	}
+
 	// 패킷 재활용 준비
 	uint16_t* typeptr = (uint16_t*)packet->ReuseSSProtocol(SizeOf(type, accountno, sequence));
 	*typeptr = en_PACKET_SS_RES_NEW_CLIENT_LOGIN;
 	// 내부에서 참조 올림, 밖에서 똑같이 참조 해제
 	CGameServer::GetLoginServerConnection().SendPacket(packet);
+	
 }
 
 
@@ -464,7 +559,7 @@ void CLobby::RequestNewClientLogin(Net::CPacket* packet)
 // Redis Thread
 //--------------------------------------
 
-void CLobby::RedisThreadFunc()
+void CLobby::Redis_ThreadFunc()
 {
 	bool fin = false;
 	stAuthRequest req;
@@ -479,7 +574,7 @@ void CLobby::RedisThreadFunc()
 				fin = true;
 				break;
 			}
-			ProcessRedis(req);
+			Redis_Process(req);
 		}
 
 		_signal.exchange(0, std::memory_order_seq_cst);
@@ -491,62 +586,39 @@ void CLobby::RedisThreadFunc()
 				fin = true;
 				break;
 			}
-			ProcessRedis(req);
+			Redis_Process(req);
 		}
 	}
 
 	return;
 }
-
-void CLobby::ProcessRedis(const stAuthRequest& req)
+void CLobby::Redis_Process(const stAuthRequest& req)
 {
 	CRedisConnector& conn = CGameServer::GetRedisConnector();
 	std::string key(std::to_string(req.accountNo));
-	key += ':';
-	key += req.ip;
+	//key += ':';
+	//key += req.ip;
 	std::string value(conn.GetValue(key));
-	MakeResponse(req, value);
+	Redis_MakeResponse(req, value);
 }
-
-void CLobby::MakeResponse(const stAuthRequest& req, const std::string& value)
+void CLobby::Redis_MakeResponse(const stAuthRequest& req, const std::string& value)
 {
 	// 못찾음
 	if (value.length() == 0)
 	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] Redis-MakeResponse(), accountno not found", req.sessionId);
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] Redis-Redis_MakeResponse(), accountno not found", req.sessionId);
 		Disconnect(req.sessionId);
 		return;
 	}
 	// 세션키 다름
 	if (memcmp(req.sessionKey64, value.c_str(), SESSION_KEY_LEN) != 0)
 	{
-		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] Redis-MakeResponse(), sessionKey diff", req.sessionId);
+		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"[sessionId: %016llx] Redis-Redis_MakeResponse(), sessionKey diff", req.sessionId);
 		Disconnect(req.sessionId);
 		return;
 	}
-	const char* start = value.c_str() + SESSION_KEY_LEN;
-	const char* end = start + value.length() - SESSION_KEY_LEN;
-	const char* curend = ++start;	//처음 세션 키 이후 : 건너뛰기
 
-	// 세션키:채팅서버번호:게임서버번호:시퀀스:
-	std::string_view view[3];
-	int i = 0;
-	while (curend != end || i < 3)
-	{
-		if (*curend == ':')
-		{
-			view[i++] = {start, static_cast<size_t>(curend - start)};
-			start = curend + 1;
-		}
-		++curend;
-	}
-
-	stAuthResponse res;
-	res.sessionId = req.sessionId;
-	std::from_chars(view[0].data(), view[0].data() + view[0].size(), res.chatserverId);
-	std::from_chars(view[1].data(), view[1].data() + view[1].size(), res.gameserverId);
-	std::from_chars(view[2].data(), view[2].data() + view[2].size(), res.sequence);
-	
+	stAuthResponse res(req.sessionId);
 	while (_redisToLobby.Enqueue(reinterpret_cast<const char*>(&res), sizeof(res)) != sizeof(res))
 		Log::logging().Log(TAG_LOBBY, Log::en_ERROR, L"Redis-MakeReponse(), Lobby cannot process redis response normally");
 

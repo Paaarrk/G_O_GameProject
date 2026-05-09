@@ -8,6 +8,7 @@
 #include "LockFreeQueue.hpp"
 #include "Contents.h"
 
+class CPlayer;
 class CGameZone : public Net::CZone
 {
 public:
@@ -24,7 +25,9 @@ public:
 	void OnMessage(uint64_t sessionId, const char* readPtr, int payloadlen) override;
 	
 private:
+	std::unordered_map<uint64_t, CPlayer*> _gamePlayerMap;
 
+	CDBWriterThread _mapwriter;
 };
 
 #endif

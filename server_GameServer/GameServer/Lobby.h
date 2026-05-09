@@ -19,34 +19,40 @@ struct stAuthRequest
 	uint64_t	sessionId;
 	int64_t		accountNo;
 	char		sessionKey64[SESSION_KEY_LEN];
-	char		ip[IPV4_LEN];
 
 	void ExitSignal() noexcept { sessionId = 0; }
 #pragma warning(push)
 #pragma warning(disable: 26495)	// 초기화 필요성 없음
 	stAuthRequest() noexcept {}
 #pragma warning(pop)
-	stAuthRequest(uint64_t sessionid, int64_t accno, char(&skey)[SESSION_KEY_LEN], char(&ip)[IPV4_LEN]) noexcept
+	stAuthRequest(uint64_t sessionid, int64_t accno, char(&skey)[SESSION_KEY_LEN]) noexcept
 		:sessionId(sessionid), accountNo(accno)
 	{
 		memcpy(sessionKey64, skey, SESSION_KEY_LEN);
-		memcpy(this->ip, ip, IPV4_LEN);
 	}
 };
-
 struct stAuthResponse
 {
-	uint64_t sessionId;
-	int32_t gameserverId;
-	int32_t chatserverId;
-	uint64_t sequence;
+	uint64_t sessionId = 0;
+	// int32_t gameserverId;
+	// int32_t chatserverId;
+	// uint64_t sequence;
+	stAuthResponse(){}
+	stAuthResponse(uint64_t sessionId) :sessionId(sessionId) {}
 };
 
 class CLobby : public Net::CZone
 {
 public:
+	//---------------------------------------------------------
+	// Constructor & Destructor
+	//---------------------------------------------------------
 	CLobby();
 	~CLobby();
+
+	//---------------------------------------------------------
+	// Map Functions
+	//---------------------------------------------------------
 	
 	CPlayer* FindPlayerInLobby(uint64_t sessionId) const
 	{
@@ -55,7 +61,6 @@ public:
 			return nullptr;
 		return it->second;
 	}
-
 	// 0 리턴시 게임중X, 세션아이디 리턴시 게임중
 	uint64_t FindLoginSession(int64_t accountNo) const
 	{
@@ -64,7 +69,6 @@ public:
 			return 0;
 		return it->second;
 	}
-
 	bool InsertPlayerSession(int64_t accountNo, uint64_t sessionId)
 	{
 		auto [it, success] = _loginAccountNoToSessionIdMap.insert({ accountNo, sessionId });
@@ -93,9 +97,13 @@ public:
 	// Get
 	//---------------------------------------------------------
 
-	CGameServer* GetMyServer() const;
+	CGameServer* GetMyServer() const
+	{
+		return reinterpret_cast<CGameServer*>(GetZoneServer());
+	}
+
 private:
-	uint16_t CheckType(const char*& readPtr, int32_t& len) noexcept
+	uint16_t RequestCheckType(const char* (&readPtr), int32_t& len) noexcept
 	{
 		if (len < MESSAGE_HEADER_LEN)
 			return 0;
@@ -112,12 +120,13 @@ private:
 
 	bool RequestLogin(uint64_t sessionId, const char* readptr, int32_t payloadlen);
 	bool RequestCharacterSelect(uint64_t sessionId, const char* readptr, int32_t payloadlen);
+	bool RequestHeartbeat(uint64_t sessionId, const char* readptr, int32_t payloadlen);
 
 	//----------------------------------
 	// From Login Server
 	//----------------------------------
-	void CheckLoginServerResponses();
-	void RequestNewClientLogin(Net::CPacket* packet);
+	void Check_LoginServerResponse();
+	void Login_RequestNewClientLogin(Net::CPacket* packet);
 	
 
 	//----------------------------------
@@ -129,32 +138,33 @@ private:
 	// 레디스에서 성공했을 때만 답이 옴
 	CPlayer* ResponseAuthRedis(const stAuthResponse* res) const;
 	// 레디스 큐 비우기
-	void CheckRedisResponses();
-
+	void Check_RedisResponse();
 
 	//----------------------------------
 	// DB
 	//----------------------------------
 	
-	void CheckDBResponses();
-
+	void Check_DBResponse();
 
 	//----------------------------------
 	// Redis Thread Func
 	//----------------------------------
-	void RedisThreadFunc();
-	void ProcessRedis(const stAuthRequest& req);
-	void MakeResponse(const stAuthRequest& req, const std::string& value);
-	int32_t GetLtoR_QSize() const { return _lobbyToRedis.GetUseSize() / sizeof(stAuthRequest); }
-	int32_t GetRtoL_QSize() const { return _redisToLobby.GetUseSize() / sizeof(stAuthResponse); }
+	void Redis_ThreadFunc();
+	void Redis_Process(const stAuthRequest& req);
+	void Redis_MakeResponse(const stAuthRequest& req, const std::string& value);
+	int32_t GetSize_LobbyToRedisQ() const { return _lobbyToRedis.GetUseSize() / sizeof(stAuthRequest); }
+	int32_t GetSize_RedisToLobbyQ() const { return _redisToLobby.GetUseSize() / sizeof(stAuthResponse); }
+
+
+	//----------------------------------
+	// Members
+	//----------------------------------
 
 	std::unordered_map<uint64_t, CPlayer*> _lobbyPlayerMap;
 	std::unordered_map<int64_t, uint64_t> _loginAccountNoToSessionIdMap;
-	
 	// 계정이랑 엮이지도 않고 정말 메모리만 덩그러니 있는 상태,
 	// 단, DB에 저장중 일 수는 있음
 	std::unordered_map<int64_t, CPlayer*> _logoutAccountNoToPlayerMap;
-	
 	bool _useTimeout;
 
 	std::thread _redisThread;
@@ -163,8 +173,7 @@ private:
 	std::atomic<int32_t> _signal;
 
 	Core::CLockFreeQueue<Net::CPacket*> _fromLoginQ;
-	
-	CDBThreadPool<POOL_USE_COUNT>& _staticDBReadPool;
+	CDBThreadPool<POOL_USE_COUNT>& _staticDBPool;
 };
 
 

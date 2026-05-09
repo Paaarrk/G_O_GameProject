@@ -369,7 +369,7 @@ void CAuthContainer::RequestAuth(Net::CPacket* pMessage)
 		*ret.ptr = '\0';
 		// 레디스에서 얻기
 		std::string identifiedKey = std::move(GetValue(buffer));
-		DelValue(buffer);
+		//DelValue(buffer);
 
 		if (clientKey != identifiedKey)
 		{

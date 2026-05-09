@@ -63,9 +63,10 @@ inline static const wchar_t* QUERY_FORMATS[] = {
 	L"COMMIT;",
 
 	L"BEGIN;"
-	L"UPDATE `accountdb`.`status` SET (`status` = 0) WHERE (`accountno` = %lld);"
-	L"INSERT INTO `logdb`.`gamelog_%04d_%02d` (`accountno`, `servername`, `type`, `code`, `param1`, `param2`, `param3`)"
-	L"SELECT %lld, 's', 1, 12, %d, %d, %d FROM DUAL WHERE ROW_COUNT() > 0; "
+	L"UPDATE `accountdb`.`status` SET `status` = 0 WHERE (`accountno` = %lld);"
+	L"INSERT INTO `logdb`.`gamelog_%04d_%02d` (`accountno`, `servername`, `type`, `code`, `param1`, `param2`, `param3`, `param4`, `message`)"
+	L"SELECT %lld, '%s', 1, 12, %d, %d, %d, %d, '%s' FROM DUAL WHERE ROW_COUNT() > 0; "
+	L"SELECT ROW_COUNT() ;"
 	L"COMMIT;"
 };
 // | int64_t accoutno | char[20] userid | char[20] usernick | int32_t status |
@@ -271,23 +272,85 @@ private:
 template <typename F>
 concept UpdateLogoutFunc = std::invocable<F, const UpdateLogoutResType&>;
 template <UpdateLogoutFunc Lambda>
-class CAsync_UpdateLogout
+class CAsync_UpdateLogout : public IAsyncRequest
 {
 public:
-	CAsync_UpdateLogout(EDBPoolUse who, uint64_t sessionId, Lambda&& responsefunc, )
+	CAsync_UpdateLogout(EDBPoolUse who, uint64_t sessionId, Lambda&& responsefunc, int64_t accountno,
+		int32_t tilex, int32_t tiley, int32_t cristal, int32_t hp, const wchar_t* message) : IAsyncRequest(who, sessionId, QUERY_FORMATS[ASYNC_UPDATE_LOGOUT]),
+	_processfunction(std::forward<Lambda>(responsefunc)), _accountno(accountno), _tilex(tilex), _tiley(tiley),
+	_cristal(cristal), _hp(hp), _message(message)
 	{
-
+		if constexpr (sizeof(CAsync_UpdateLogout<Lambda>) > DBBlock::SIZE)
+			CheckSize<sizeof(CAsync_UpdateLogout), static_cast<size_t>(DBBlock::SIZE)> CAysnc_UpdateLogout;
 	}
 	~CAsync_UpdateLogout() override = default;
 	void ProcessingQuery() override
 	{
+		tm tm;
+		time_t mytime = time(NULL);
+		localtime_s(&tm, &mytime);
+		CTlsMySqlConnector<LOCAL_DB>& conn = GetConnector<LOCAL_DB>();
+		// [ASYNC_UPDATE_LOGOUT]: accountno, year, mon, accountno, servername, tilex, tiley, cristal, hp
+		int32_t ret = conn.RequestQuery(_query, _accountno, tm.tm_year + 1900, tm.tm_mon + 1, 
+			_accountno, L"Game", _tilex, _tiley, _cristal, _hp, _message);
+		
+		int status = 0;
+		int affectrowcount = 0;
+		while (status == 0)
+		{
+			if (conn.GetErrno())
+			{
+				// ret2 , 연결 끊김 -> 그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				_res = { _accountno, false };
+				conn.LogSQLError();
+				conn.RequestQuery(L"ROLLBACK");
+				return;
+			}
 
+			MYSQL_RES* res = conn.GetResult();
+			if (res)
+			{
+				MYSQL_ROW row = mysql_fetch_row(res);
+				affectrowcount = std::stoi(row[0]);
+				conn.FreeResult();
+			}
+			status = conn.MySqlNextResult();
+		}
+
+		if (status > 0)	// 커밋이 실패함
+		{
+			if (conn.GetErrno())
+			{
+				// ret2, 연결 끊김 ->  그냥 끊으면됨 (저장 됫다면 재접속시 정보O, 아니면 그때 다시보내면됨)
+				conn.LogSQLError();
+			}
+			_res = { _accountno, false };
+			conn.RequestQuery(L"ROLLBACK");
+			return;
+		}
+		else if (affectrowcount == 0)	// 커밋은 성공했는데 쿼리 결과에 문제가 있음.
+		{
+			wchar_t query[CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE];
+			swprintf_s(query, CTlsMySqlConnector<LOCAL_DB>::QUERY_SIZE, this->_query, _accountno, tm.tm_year + 1900, tm.tm_mon + 1, 
+				_accountno, L"Game", _tilex, _tiley, _cristal, _hp, _message);
+			Log::logging().Log(TAG_DB, Log::en_ERROR, L"affectrowcount = 0... check query %s", query);
+			_res = { _accountno, false };
+			return;
+		}
+
+		_res = { _accountno, true };
 	}
 	void ResponseProcess() override
 	{
-
+		_processfunction(_res);
 	}
 private:
+	int64_t _accountno;
+	int32_t _tilex;
+	int32_t _tiley;
+	int32_t _cristal;
+	int32_t _hp;
+	const wchar_t* _message;
 	UpdateLogoutResType _res;
 	Lambda _processfunction;
 };

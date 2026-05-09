@@ -4,6 +4,7 @@
 #include <string>
 #include <atomic>
 #include "Contents.h"
+#include "CustomPos.h"
 #include "TLSObjectPool_IntrusiveList.hpp"
 
 //--------------------------------------------------------------
@@ -63,7 +64,8 @@ public:
 	}
 
 	// 기존 관리되는 로그아웃된 유저의 메모리를 그대로 가져옵니다
-	void LoadPlayer(CPlayer& origin) noexcept;
+	// 가져와도 유효한 상태면 true, 아니면 false
+	bool LoadPlayer(CPlayer& origin) noexcept;
 	void LoadPlayer(const GetCharacterInfoResType& dbload) noexcept;
 	void MakeMemoryStatus(unsigned long curtime) noexcept {
 		_befPlayerStatus = _playerStatus; 
@@ -76,14 +78,17 @@ public:
 	void PlayerWaitDbCheck(unsigned long curtime, uint64_t sessionId) noexcept;
 	void PlayerWaitLoad(unsigned long curtime) noexcept;
 	void PlayerWaitGameSelect(unsigned long curtime) noexcept;
+	void PlayerWaitSelectDBSave(unsigned long curtime) noexcept;
 	void PlayerWaitGoInGame(unsigned long curtime) noexcept;
-
+	
 	void PlayerLogout(unsigned long curtime) noexcept;
 
 	void SetPlayerName(const stName& name)
 	{
 		MultiByteToWideChar(CP_UTF8, 0, name.name, -1, _nickname, GAME_NICKNAME_LEN);
 	}
+	void SetPlayerFirstCreate(int32_t playerType, int32_t hp);
+
 	unsigned long SetLastRecvedTime(unsigned long time) { _recvedTime = time; }
 	unsigned long GetLastRecvedTime() const noexcept { return _recvedTime; }
 	int64_t GetAccountNo() const noexcept { return _accountNo; }
@@ -91,6 +96,10 @@ public:
 	int32_t GetBefPlayerStatus() const noexcept { return _befPlayerStatus; }
 	const wchar_t* GetPlayerIp() const noexcept { return _wip; }
 	uint64_t GetSessionId() const noexcept { return _sessionId; }
+	int32_t GetTileX() const noexcept { return _tileX; }
+	int32_t GetTileY() const noexcept { return _tileY; }
+	int32_t GetCristal() const noexcept { return _cristal; }
+	int32_t GetHp() const noexcept { return _hp; }
 
 	//zone에서만 호출 가능
 	void IncreaseDBRequest() noexcept { ++_dbRequestCnt; }
@@ -114,16 +123,14 @@ private:
 
 	unsigned long _recvedTime = 0;
 
-	float _posX = 0.0f;
-	float _posY = 0.0f;
-	int32_t _rotate = 0;
-	int32_t _tileX = 0;
-	int32_t _tileY = 0;
+	CustomPos _pos;
+	int32_t _tileX = -1;
+	int32_t _tileY = -1;
 
 	int32_t _hp = 0;
 	uint64_t _exp = 0;
 	int32_t _level = 0;
-	int32_t _crystal = 0;
+	int32_t _cristal = 0;
 	wchar_t _nickname[GAME_NICKNAME_LEN] = {};
 
 	wchar_t* _wip;

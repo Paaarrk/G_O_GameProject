@@ -139,8 +139,10 @@
   <ItemGroup>
     <ClCompile Include="21_TextParser.cpp" />
     <ClCompile Include="ClientToLogin.cpp" />
+    <ClCompile Include="CustomPos.cpp" />
     <ClCompile Include="DBRequest.cpp" />
     <ClCompile Include="DBWriter.cpp" />
+    <ClCompile Include="Field.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="GameZone.cpp" />
     <ClCompile Include="Lobby.cpp" />
@@ -163,11 +165,13 @@
     <ClInclude Include="ClientToLogin.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="Contents.h" />
+    <ClInclude Include="CustomPos.h" />
     <ClInclude Include="DBConnector.hpp" />
     <ClInclude Include="DBProtocol.h" />
     <ClInclude Include="DBRequest.h" />
     <ClInclude Include="DBThreadPool.h" />
     <ClInclude Include="DBWriter.h" />
+    <ClInclude Include="Field.h" />
     <ClInclude Include="GameServer.h" />
     <ClInclude Include="GameZone.h" />
     <ClInclude Include="Lobby.h" />

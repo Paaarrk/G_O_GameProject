@@ -102,6 +102,12 @@
     <ClCompile Include="staticdatas.cpp">
       <Filter>소스 파일\Tools</Filter>
     </ClCompile>
+    <ClCompile Include="Field.cpp">
+      <Filter>소스 파일\Contents\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="CustomPos.cpp">
+      <Filter>소스 파일\Tools</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameServer.h">
@@ -150,6 +156,12 @@
       <Filter>헤더 파일\Contents\Game</Filter>
     </ClInclude>
     <ClInclude Include="staticdatas.h">
+      <Filter>헤더 파일\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="Field.h">
+      <Filter>헤더 파일\Contents\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomPos.h">
       <Filter>헤더 파일\Tools</Filter>
     </ClInclude>
   </ItemGroup>

@@ -64,14 +64,19 @@ public:
 	virtual void OnStop();
 	virtual void OnExit();
 
-	// 생성자
+	//------------------------------------------------------------
+	// Constructor & Destructor
+	//------------------------------------------------------------
+
 	CGameServer();
 	virtual ~CGameServer();
 
+	//------------------------------------------------------------
+	// Get
+	//------------------------------------------------------------
+
 	// 레디스 커넥터
 	static CRedisConnector& GetRedisConnector() { return s_conn_auth; }
-	static CClientToLoginServer& GetLoginServerConntector() { return s_toLoginServerClient; }
-
 	// 로그인 서버
 	static CClientToLoginServer& GetLoginServerConnection() { return s_toLoginServerClient; }
 
